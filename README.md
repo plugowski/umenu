@@ -52,9 +52,11 @@ menu.add_screen(MenuScreen('Main Menu')
 menu.draw()
 ```
 
+![Generated Menu](images/main_menu.jpeg?raw=true "Menu")
+
 ## CustomItem
 
-To create your own menu logic, you have to extend CustomItem class and implement at least `draw()` and `select()` function.
+To create your own menu logic, you can extend abstract class CustomItem class and implement at least `draw()` and `select()` function.
 
 draw() is called once you select specific menu, and selec() is collect when someone click inside CustomItem.
 
@@ -85,7 +87,7 @@ menu.add_screen(MenuScreen('Main Menu')
 )
 ```
 
-See [`example/main.py`](./example/main.py). 
+See [`examples/rotary_encoder_menu.py`](./examples/rotary_encoder_menu.py). 
 
 
 ## License

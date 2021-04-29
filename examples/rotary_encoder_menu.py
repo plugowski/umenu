@@ -1,5 +1,5 @@
 from machine import Pin, I2C
-from rotary.rotary_irq import RotaryIRQ
+from rotary.rotary_irq import RotaryIRQ  # used https://github.com/miketeachman/micropython-rotary
 import ssd1306
 import time
 import uasyncio as asyncio

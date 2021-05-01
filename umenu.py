@@ -11,27 +11,26 @@ class Icon(framebuf.FrameBuffer):
 
 class MenuItem:
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, decorator=None):
         self.parent = None
         self.is_active = False
         self.name = name
-        self.decorator = ''
+        self.decorator = '' if decorator is None else decorator
 
     def click(self):
         raise NotImplementedError()
 
     def get_decorator(self):
-        return self.decorator
+        return self.decorator if not callable(self.decorator) else self.decorator()
 
 
 class SubMenuItem(MenuItem):
 
     menu = None
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, decorator=None):
+        super().__init__(name, '>' if decorator is None else decorator)
         self.menu = MenuScreen(name, None)
-        self.decorator = '>'
 
     def click(self):
         pass
@@ -44,33 +43,33 @@ class SubMenuItem(MenuItem):
         self.menu.reset()
 
 
-class ToggleItem(MenuItem):
+class CallbackItem(MenuItem):
 
-    def __init__(self, name, state_callback, change_callback, *args):
-        super().__init__(name)
-        self.change_callback = change_callback
-        self.state_callback = state_callback
+    def __init__(self, name, callback, decorator=None, return_parent=True, *args):
+        if not callable(callback):
+            raise ValueError('callback should be callable!')
+        super().__init__(name, decorator)
+        self.callback = callback
         self.args = args
-
-    def check_status(self):
-        return self.state_callback(*self.args) if len(self.args) > 0 else self.state_callback()
+        self.return_parent = return_parent
 
     def click(self):
-        self.change_callback(*self.args) if len(self.args) > 0 else self.change_callback()
-        return self.parent
+        self.callback(*self.args)
+        if self.return_parent:
+            return self.parent
+
+
+class ToggleItem(CallbackItem):
+
+    def __init__(self, name, state_callback, change_callback, *args):
+        super().__init__(name, change_callback, None, *args)
+        self.state_callback = state_callback
+
+    def check_status(self):
+        return self.state_callback(*self.args)
 
     def get_decorator(self):
         return '[x]' if self.check_status() else '[ ]'
-
-
-class SelectItem(ToggleItem):
-
-    def __init__(self, name, status, callback, *args):
-        super().__init__(name, lambda *largs: status, callback, *args)
-        self.status = status
-
-    def get_decorator(self):
-        return '<<' if self.status else ''
 
 
 class EnumItem(SubMenuItem):
@@ -98,7 +97,8 @@ class EnumItem(SubMenuItem):
                 name = self.items[pos]['name']
             else:
                 name = self.items[pos]
-            self.add(SelectItem(name, pos == self.selected, self.choose, pos), self.parent)
+            decorator = '<<' if pos == self.selected else ''
+            self.add(CallbackItem(name, self.choose, decorator, True, pos), self.parent)
 
         return self.menu
 
@@ -115,8 +115,7 @@ class EnumItem(SubMenuItem):
 class InfoItem(MenuItem):
 
     def __init__(self, name, decorator=''):
-        super().__init__(name)
-        self.decorator = decorator
+        super().__init__(name, decorator)
 
     def click(self):
         return self.parent
@@ -150,13 +149,17 @@ class CustomItem(MenuItem):
 
 class ValueItem(CustomItem):
 
-    def __init__(self, name, value, min_v, max_v, step, callback=None):
+    def __init__(self, name, value_reader, min_v, max_v, step, callback, *args):
+        if not callable(callback):
+            raise ValueError('callback should be callable!')
         super().__init__(name)
-        self.value = value
+        self._value = value_reader if not callable(value_reader) else 0
+        self.value_reader = value_reader
         self.min_v = min_v
         self.max_v = max_v
         self.step = step
         self.callback = callback
+        self.args = args
 
     def draw(self):
         self.display.fill(0)
@@ -165,8 +168,6 @@ class ValueItem(CustomItem):
         self.display.hline(0, 10, self.display.width, 1)
         self.display.rich_text(str(self.value), None, 20, 1, size=5, align=self.display.TEXT_CENTER)
         self.display.show()
-        if callable(self.callback):
-            self.callback(self.value)
 
     def select(self):
         return self.parent
@@ -180,6 +181,15 @@ class ValueItem(CustomItem):
         if self.value > self.min_v:
             self.value -= self.step
         self.draw()
+
+    @property
+    def value(self):
+        return self._value if not callable(self.value_reader) else self.value_reader(*self.args)
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+        self.callback(self._value, *self.args)
 
     def get_decorator(self):
         return str(self.value)
@@ -301,19 +311,24 @@ class Menu:
 
     def click(self):
         self.current_screen = self.current_screen.select()
-        self.draw()
+        if self.current_screen is not None:
+            self.draw()
 
+    # todo: rewrite to use framebuf instead display itself
     def item_line(self, item: MenuItem, pos):
         menu_y_end = 12
         y = menu_y_end + (pos * self.line_height)
         v_padding = int((self.line_height - self.font_height) / 2)
-        decorator_x_pos = self.display.width - (len(item.get_decorator()) * self.font_width) - 1
         background = int(item.is_active)
 
         self.display.fill_rect(0, y, self.display.width, self.line_height, background)
         self.display.text(item.name, 0, y + v_padding, int(not background))
-        # todo: check if decorator is an icon or text
-        self.display.text(item.get_decorator(), decorator_x_pos, y + v_padding, int(not background))
+
+        if hasattr(self.display, 'rich_text'):
+            self.display.rich_text(str.upper(item.get_decorator()), None, y + v_padding, int(not background), align=self.display.TEXT_RIGHT)
+        else:
+            x_pos = self.display.width - (len(item.get_decorator()) * self.font_width) - 1
+            self.display.text(item.get_decorator(), x_pos, y + v_padding, int(not background))
 
     def menu_header(self, text):
         x = int((self.display.width / 2) - (len(text) * self.font_width / 2))

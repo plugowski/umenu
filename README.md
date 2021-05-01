@@ -36,6 +36,9 @@ Library allows you to add nested screens, as also implement your own screens wit
 - `SubMenuItem` - Creates new sub-menu with list of items.
 - `InfoItem` - Show title and value aligned to right
 - `ToggleItem` - requires two callbacks as parameters, one to read current state (True/False), and another to change it, you can also pass `*args`
+- `CallcackItem` - can trigger any callback assigned to it, by default return parent, but can be disabled by setting return_parent to False
+- `EnumItem` - kind of selectable item, where should be defined list of positions, and selected item will be returned to callback
+- `ValueItem` - allows you to adjust specific value using menu buttons/encoder
 - `CustomItem` - this class should be overridden by your own logic (more info below)
 
 ```python

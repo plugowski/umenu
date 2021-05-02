@@ -11,11 +11,16 @@ class Icon(framebuf.FrameBuffer):
 
 class MenuItem:
 
-    def __init__(self, name: str, decorator=None):
+    def __init__(self, name: str, decorator=None, visible=None):
         self.parent = None
+        self._visible = True if visible is None else visible
         self.is_active = False
         self.name = name
         self.decorator = '' if decorator is None else decorator
+
+    @property
+    def visible(self):
+        return self._visible if not callable(self._visible) else self._visible()
 
     def click(self):
         raise NotImplementedError()
@@ -45,28 +50,43 @@ class SubMenuItem(MenuItem):
 
 class CallbackItem(MenuItem):
 
-    def __init__(self, name, callback, decorator=None, return_parent=True, *args):
-        if not callable(callback):
-            raise ValueError('callback should be callable!')
+    def __init__(self, name, callback, decorator=None, return_parent=True):
         super().__init__(name, decorator)
+        if not self._check_callable(callback):
+            raise ValueError('callable param should be callable or tuple with callable on first place!')
         self.callback = callback
-        self.args = args
         self.return_parent = return_parent
 
     def click(self):
-        self.callback(*self.args)
+        self._call_callable(self.callback)
         if self.return_parent:
             return self.parent
+
+    @staticmethod
+    def _check_callable(param):
+        if callable(param) or (type(param) is tuple and callable(param[0])):
+            return True
+        return False
+
+    @staticmethod
+    def _call_callable(func, *args):
+        if callable(func):
+            return func(*args)
+        elif type(func) is tuple and callable(func[0]):
+            in_args = func[1] if type(func[1]) is tuple else (func[1],)
+            return func[0](*tuple(list(in_args) + list(args)))
 
 
 class ToggleItem(CallbackItem):
 
-    def __init__(self, name, state_callback, change_callback, *args):
-        super().__init__(name, change_callback, None, *args)
+    def __init__(self, name, state_callback, change_callback):
+        super().__init__(name, change_callback)
+        if not self._check_callable(state_callback):
+            raise ValueError('callable param should be callable or tuple with callable on first place!')
         self.state_callback = state_callback
 
     def check_status(self):
-        return self.state_callback(*self.args)
+        return self._call_callable(self.state_callback)
 
     def get_decorator(self):
         return '[x]' if self.check_status() else '[ ]'
@@ -76,8 +96,8 @@ class EnumItem(SubMenuItem):
 
     def __init__(self, name, items, callback=None, selected=None):
         super().__init__(name)
-        self.selected = 0 if selected is None else selected
         self.items = items
+        self.selected = 0 if selected is None else self._get_index_by_key(selected)
         self.callback = callback
         if not isinstance(items, list):
             raise ValueError("items should be a list!")
@@ -98,9 +118,20 @@ class EnumItem(SubMenuItem):
             else:
                 name = self.items[pos]
             decorator = '<<' if pos == self.selected else ''
-            self.add(CallbackItem(name, self.choose, decorator, True, pos), self.parent)
+            self.add(CallbackItem(name, (self.choose, pos), decorator), self.parent)
 
         return self.menu
+
+    def _get_index_by_key(self, key):
+        if type(key) is int:
+            return key
+
+        i = 0
+        for item in self.items:
+            if ('value' in item and item['value'] == key) or item['name'] == key:
+                return i
+            i += 1
+        raise ValueError('No index for key!')
 
     def _get_element(self):
         if isinstance(self.items[self.selected], str):
@@ -147,19 +178,17 @@ class CustomItem(MenuItem):
         raise NotImplementedError()
 
 
-class ValueItem(CustomItem):
+class ValueItem(CustomItem, CallbackItem):
 
-    def __init__(self, name, value_reader, min_v, max_v, step, callback, *args):
-        if not callable(callback):
-            raise ValueError('callback should be callable!')
+    def __init__(self, name, value_reader, min_v, max_v, step, callback):
+        self._check_callable(callback)
         super().__init__(name)
-        self._value = value_reader if not callable(value_reader) else 0
+        self._value = value_reader if not self._check_callable(value_reader) else 0
         self.value_reader = value_reader
         self.min_v = min_v
         self.max_v = max_v
         self.step = step
         self.callback = callback
-        self.args = args
 
     def draw(self):
         self.display.fill(0)
@@ -184,12 +213,12 @@ class ValueItem(CustomItem):
 
     @property
     def value(self):
-        return self._value if not callable(self.value_reader) else self.value_reader(*self.args)
+        return self._value if not self._check_callable(self.value_reader) else self._call_callable(self.value_reader)
 
     @value.setter
     def value(self, value):
         self._value = value
-        self.callback(self._value, *self.args)
+        self._call_callable(self.callback, self._value)
 
     def get_decorator(self):
         return str(self.value)

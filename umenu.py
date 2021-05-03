@@ -20,47 +20,13 @@ class MenuItem:
 
     @property
     def visible(self):
-        return self._visible if not callable(self._visible) else self._visible()
+        return self._visible if not self._check_callable(self._visible) else self._call_callable(self._visible)
 
     def click(self):
         raise NotImplementedError()
 
     def get_decorator(self):
         return self.decorator if not callable(self.decorator) else self.decorator()
-
-
-class SubMenuItem(MenuItem):
-
-    menu = None
-
-    def __init__(self, name, decorator=None):
-        super().__init__(name, '>' if decorator is None else decorator)
-        self.menu = MenuScreen(name, None)
-
-    def click(self):
-        pass
-
-    def add(self, item, parent=None) -> 'SubMenuItem':
-        self.menu.add(item, parent)
-        return self
-
-    def reset(self):
-        self.menu.reset()
-
-
-class CallbackItem(MenuItem):
-
-    def __init__(self, name, callback, decorator=None, return_parent=True):
-        super().__init__(name, decorator)
-        if not self._check_callable(callback):
-            raise ValueError('callable param should be callable or tuple with callable on first place!')
-        self.callback = callback
-        self.return_parent = return_parent
-
-    def click(self):
-        self._call_callable(self.callback)
-        if self.return_parent:
-            return self.parent
 
     @staticmethod
     def _check_callable(param):
@@ -77,10 +43,44 @@ class CallbackItem(MenuItem):
             return func[0](*tuple(list(in_args) + list(args)))
 
 
+class SubMenuItem(MenuItem):
+
+    menu = None
+
+    def __init__(self, name, decorator=None, visible=None):
+        super().__init__(name, '>' if decorator is None else decorator, visible)
+        self.menu = MenuScreen(name, None)
+
+    def click(self):
+        pass
+
+    def add(self, item, parent=None) -> 'SubMenuItem':
+        self.menu.add(item, parent)
+        return self
+
+    def reset(self):
+        self.menu.reset()
+
+
+class CallbackItem(MenuItem):
+
+    def __init__(self, name, callback, decorator=None, return_parent=True, visible=None):
+        super().__init__(name, decorator, visible)
+        if not self._check_callable(callback):
+            raise ValueError('callable param should be callable or tuple with callable on first place!')
+        self.callback = callback
+        self.return_parent = return_parent
+
+    def click(self):
+        self._call_callable(self.callback)
+        if self.return_parent:
+            return self.parent
+
+
 class ToggleItem(CallbackItem):
 
-    def __init__(self, name, state_callback, change_callback):
-        super().__init__(name, change_callback)
+    def __init__(self, name, state_callback, change_callback, visible=None):
+        super().__init__(name, change_callback, visible=visible)
         if not self._check_callable(state_callback):
             raise ValueError('callable param should be callable or tuple with callable on first place!')
         self.state_callback = state_callback
@@ -94,21 +94,22 @@ class ToggleItem(CallbackItem):
 
 class EnumItem(SubMenuItem):
 
-    def __init__(self, name, items, callback=None, selected=None):
-        super().__init__(name)
-        self.items = items
-        self.selected = 0 if selected is None else self._get_index_by_key(selected)
-        self.callback = callback
+    def __init__(self, name, items, callback, selected=None, visible=None):
+        super().__init__(name, visible=visible)
+        if not self._check_callable(callback):
+            raise ValueError('callable param should be callable or tuple with callable on first place!')
         if not isinstance(items, list):
             raise ValueError("items should be a list!")
+        self.callback = callback
+        self.items = items
+        self.selected = 0 if selected is None else self._get_index_by_key(selected)
 
         self._set_decorator()
 
     def choose(self, selection):
         self.selected = selection
         self._set_decorator()
-        if callable(self.callback):
-            self.callback(self._get_element()[0])
+        self._call_callable(self.callback, self._get_element()[0])
 
     def click(self):
         self.reset()
@@ -131,7 +132,7 @@ class EnumItem(SubMenuItem):
             if ('value' in item and item['value'] == key) or item['name'] == key:
                 return i
             i += 1
-        raise ValueError('No index for key!')
+        raise ValueError('No index for key: {}!'.format(key))
 
     def _get_element(self):
         if isinstance(self.items[self.selected], str):
@@ -145,8 +146,8 @@ class EnumItem(SubMenuItem):
 
 class InfoItem(MenuItem):
 
-    def __init__(self, name, decorator=''):
-        super().__init__(name, decorator)
+    def __init__(self, name, decorator='', visible=None):
+        super().__init__(name, decorator, visible=visible)
 
     def click(self):
         return self.parent
@@ -154,8 +155,8 @@ class InfoItem(MenuItem):
 
 class CustomItem(MenuItem):
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, visible=None):
+        super().__init__(name, visible=visible)
         self.display = None  # it is set after initialization via MenuScreen.add()
 
     def click(self):
@@ -180,9 +181,9 @@ class CustomItem(MenuItem):
 
 class ValueItem(CustomItem, CallbackItem):
 
-    def __init__(self, name, value_reader, min_v, max_v, step, callback):
+    def __init__(self, name, value_reader, min_v, max_v, step, callback, visible=None):
         self._check_callable(callback)
-        super().__init__(name)
+        super().__init__(name, visible=visible)
         self._value = value_reader if not self._check_callable(value_reader) else 0
         self.value_reader = value_reader
         self.min_v = min_v
@@ -227,7 +228,7 @@ class ValueItem(CustomItem, CallbackItem):
 class BackItem(MenuItem):
 
     def __init__(self, parent):
-        super().__init__('< Back')
+        super().__init__('< BACK')
         self.parent = parent
 
     def click(self):
@@ -238,6 +239,7 @@ class MenuScreen:
 
     def __init__(self, title: str, parent=None):
         self._items = []
+        self._visible_items = []
         self.selected = 0
         self.parent = parent
         self.title = title
@@ -253,7 +255,13 @@ class MenuScreen:
         self._items = []
 
     def count(self) -> int:
-        return len(self._items) + (1 if self.parent is not None else 0)
+        elements = 0
+        self._visible_items = []
+        for item in self._items:
+            if item.visible:
+                elements += 1
+                self._visible_items.append(item)
+        return elements + (1 if self.parent is not None else 0)
 
     def up(self) -> None:
         if self.selected > 0:
@@ -271,7 +279,7 @@ class MenuScreen:
         if position + 1 == self.count() and self.parent is not None:
             item = BackItem(self.parent)
         else:
-            item = self._items[position]
+            item = self._visible_items[position]
 
         item.is_active = position == self.selected
         return item
@@ -283,7 +291,7 @@ class MenuScreen:
             self.selected = 0
 
         if type(item) is SubMenuItem:
-            return self._items[self.selected].menu
+            return item.menu
         else:
             # do action and return current menu
             return item.click()
@@ -302,11 +310,25 @@ class Menu:
         self.font_width = font_width
         self.main_screen = None
 
-    def add_screen(self, screen: MenuScreen):
+    def set_screen(self, screen: MenuScreen):
         self.current_screen = screen
         if self.main_screen is None:
             self.main_screen = screen
             self._update_display(screen._items)
+
+    def move(self, direction: int = 1):
+        self.current_screen.up() if direction < 0 else self.current_screen.down()
+        self.draw()
+
+    def click(self):
+        self.current_screen = self.current_screen.select()
+        if self.current_screen is not None:
+            self.draw()
+
+    def reset(self):
+        self.current_screen = self.main_screen
+        self.current_screen.selected = 0
+        self.draw()
 
     def draw(self):
 
@@ -325,23 +347,9 @@ class Menu:
         menu_pos = 0
         for i in range(start, end if end < elements else elements):
             self.item_line(self.current_screen.get(i), menu_pos)
-            menu_pos = menu_pos + 1
+            menu_pos += 1
 
         self.display.show()
-
-    def reset(self):
-        self.current_screen = self.main_screen
-        self.current_screen.selected = 0
-        self.draw()
-
-    def move(self, direction: int = 1):
-        self.current_screen.up() if direction < 0 else self.current_screen.down()
-        self.draw()
-
-    def click(self):
-        self.current_screen = self.current_screen.select()
-        if self.current_screen is not None:
-            self.draw()
 
     # todo: rewrite to use framebuf instead display itself
     def item_line(self, item: MenuItem, pos):
@@ -365,6 +373,9 @@ class Menu:
         self.display.hline(0, self.font_height + 2, self.display.width, 1)
 
     def _update_display(self, menu_items):
+        """
+        Add display object to all CustomItems, as it can be useful there to draw custom screens
+        """
         for obj in menu_items:
             if isinstance(obj, CustomItem):
                 obj.display = self.display

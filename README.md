@@ -32,22 +32,73 @@ Example above will draw empty menu with title `Main Menu` on top.
 
 Library allows you to add nested screens, as also implement your own screens with logic.
 
-### Some already implemented menu items are:
-- `SubMenuItem` - Creates new sub-menu with list of items.
-- `InfoItem` - Show title and value aligned to right
-- `ToggleItem` - requires two callbacks as parameters, one to read current state (True/False), and another to change it, you can also pass `*args`
-- `CallcackItem` - can trigger any callback assigned to it, by default return parent, but can be disabled by setting return_parent to False
-- `EnumItem` - kind of selectable item, where should be defined list of positions, and selected item will be returned to callback
-- `ValueItem` - allows you to adjust specific value using menu buttons/encoder
-- `CustomItem` - this class should be overridden by your own logic (more info below)
+## Menu Items
+This package already contains some basic Menu Items objects which can be used to build your menu
+
+### `SubMenuItem`
+Creates new sub-menu with list of items
+
+**Arguments (common for all MenuItems):**
+- `name` - to define name visible on screen
+- `decorator` - decorator is a text or symbol aligned to right side of screen, can be also callable which return proper 
+string. Default: `>`
+- `visible` - determine if current section should be visible (read more in Visibility section)
+### `InfoItem`
+Dummy Item, shows only specified text, with no action.
+
+**Arguments:**
+
+See SubMenuItem, default decorator here is empty.
+
+### `CallbackItem`
+Item on menu which is able to trigger any callback specified in argument. After callback, parent screen is returned,
+but can be disabled by setting return_parent to False.
+
+**Specific Arguments:**
+
+- `callback` - callable to trigger on click on item (more in section Callback)
+- `return_parent` - to determine if parent should be returned or not
+
+
+### `ToggleItem`
+Item to handle toggles, like on/off actions. You can specify state, and callback which will be called to change state.
+Actually it's extended version of `CallbackItem`
+
+**Specific Arguments:**
+
+- `state_callback` - callback to check current state
+- `change_callback` - callback to toggle current state (True/False)
+
+### `EnumItem`
+Selected List, here you can define list which will be displayed after click, and on select that element will be 
+passed to callback
+
+**Specific Arguments:**
+- `items` - list of items, can be also list of dicts {'value': 'xxx', 'name': 'Fance name'}, where `name` will be 
+  displayed on screen and `value` passed to callback
+- `callback` - callable called after selecting specific position
+- `selected` - define which element should be selected (index or dict key)
+
+### `ValueItem`
+Widget to adjust values, by incrementing or decrementing by specified amount.
+
+- `value_reader` - callable to read current value as start to adjust
+- `min_v` - minimum value for range
+- `max_v` - maximum value for range
+- `step` - step to  increment / decrement
+- `callback` - callback called on every change of value, value will be passed as last argument 
+
+### `CustomItem`
+Abstract class to override by custom logic, see example below. Also you can check `ValueItem` implementation
+which extends CustomItem.
 
 ```python
-menu.add_screen(MenuScreen('Main Menu')
+menu.set_screen(MenuScreen('Main Menu')
     .add(SubMenuItem('WiFi')
         .add(ToggleItem('Activate', wifi.get_status, wifi.activate)))
     .add(SubMenuItem('Lights')
-        .add(ToggleItem('Headlight', config.get_status, config.toggle, 1))
-        .add(ToggleItem('Backlight', config.get_status, config.toggle, 2))
+        .add(ToggleItem('Headlight', (config.get_status, 1), (config.toggle, 1)))
+        .add(ToggleItem('Backlight', (config.get_status, 2), (config.toggle, 2)))
     .add(SubMenuItem('Main Info')
         .add(InfoItem('Status:', 'ok'))
         .add(InfoItem('Temp:', '45.1')))
@@ -57,9 +108,30 @@ menu.draw()
 
 ![Generated Menu](images/main_menu.jpeg?raw=true "Menu")
 
+## Callbacks
+
+In all MenuItems callbacks can be single callable if no parameters should be passed, or tuple where wirst element is 
+callable, and second is a single arg or tuple with `*args`. For example:
+
+```python
+CallbackItem('Print it!', (print, 'hello there'))
+# will print: hello there
+```
+
+```python
+CallbackItem('Print it!', (print, (1, 2, 3)))
+# will print: 1 2 3
+```
+
+## Visibility
+
+Every item can be hidden separately by setting named argument `visible` to False or
+by passing callable to 
+
 ## CustomItem
 
-To create your own menu logic, you can extend abstract class CustomItem class and implement at least `draw()` and `select()` function.
+To create your own menu logic, you can extend abstract class CustomItem class and implement at least `draw()` and 
+`select()` function.
 
 draw() is called once you select specific menu, and selec() is collect when someone click inside CustomItem.
 
@@ -72,21 +144,20 @@ class Config(CustomItem):
         super().__init__(name)
         self.statuses = {}
 
-    def get_status(self, *args):
+    def get_status(self, num):
         try:
-            return self.statuses[args[0]]
+            return self.statuses[num]
         except KeyError:
-            self.statuses[args[0]] = False
+            self.statuses[num] = False
             return False
 
-    def toggle(self, *args):
-        self.statuses[args[0]] = not self.statuses[args[0]]
-        self.get_status(*args)
+    def toggle(self, num):
+        self.statuses[num] = not self.statuses[num]
 
 
 menu.add_screen(MenuScreen('Main Menu')
-    .add(ToggleItem('Config 1', config.get_status, config.toggle, 1))
-    .add(ToggleItem('Config 2', config.get_status, config.toggle, 2))
+    .add(ToggleItem('Config 1', (config.get_status, 1), (config.toggle, 1)))
+    .add(ToggleItem('Config 2', (config.get_status, 2), (config.toggle, 2)))
 )
 ```
 

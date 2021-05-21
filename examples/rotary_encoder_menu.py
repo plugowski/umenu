@@ -11,10 +11,9 @@ display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
 class WifiActions(CustomItem):
 
-    def __init__(self, name, display):
+    def __init__(self, name):
         super().__init__(name)
         self.status = False
-        self.display = display
 
     def select(self):
         return self.parent
@@ -38,7 +37,7 @@ class WifiActions(CustomItem):
         self.display.text(text, x, y, c)
 
 
-class Config(CustomItem):
+class Config:
 
     def __init__(self, name):
         super().__init__(name)
@@ -56,12 +55,12 @@ class Config(CustomItem):
         self.get_status(*args)
 
 
-wifi = WifiActions('WiFi', display)
+wifi = WifiActions('WiFi Info')
 config = Config('Config')
 menu = Menu(display, 4, 12)
 menu.set_screen(MenuScreen('Main Menu')
                 .add(SubMenuItem('WiFi')
-                     .add(WifiActions('Info', display))
+                     .add(wifi)
                      .add(ToggleItem('Activate', wifi.get_status, wifi.activate)))
                 .add(SubMenuItem('Lights')
                      .add(ToggleItem('Headlight', (config.get_status, 1), (config.toggle, 1)))

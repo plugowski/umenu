@@ -1,6 +1,8 @@
 # uMenu
 
-Simple MicroPython library for creating nested and multifunctional menu. 
+Simple MicroPython library to create nested and multifunctional menu with callbacks and custom menu items. 
+
+[![uMenu Example on Video](https://img.youtube.com/vi/TZODmWPMVwM/0.jpg)](https://youtu.be/TZODmWPMVwM)
 
 ## Installation
 
@@ -59,16 +61,6 @@ but can be disabled by setting return_parent to False.
 - `callback` - callable to trigger on click on item (more in section Callback)
 - `return_parent` - to determine if parent should be returned or not
 
-
-### `ToggleItem`
-Item to handle toggles, like on/off actions. You can specify state, and callback which will be called to change state.
-Actually it's extended version of `CallbackItem`
-
-**Specific Arguments:**
-
-- `state_callback` - callback to check current state
-- `change_callback` - callback to toggle current state (True/False)
-
 ### `EnumItem`
 Selected List, here you can define list which will be displayed after click, and on select that element will be 
 passed to callback
@@ -82,16 +74,35 @@ passed to callback
 ### `ValueItem`
 Widget to adjust values, by incrementing or decrementing by specified amount.
 
+**Specific Arguments:**
 - `value_reader` - callable to read current value as start to adjust
 - `min_v` - minimum value for range
 - `max_v` - maximum value for range
 - `step` - step to  increment / decrement
-- `callback` - callback called on every change of value, value will be passed as last argument 
+- `callback` - callback called on every change of value, value will be passed as last argument
 
 ### `CustomItem`
 Abstract class to override by custom logic, see example below. Also you can check `ValueItem` implementation
 which extends CustomItem.
 
+### `ToggleItem`
+Item to handle toggles, like on/off actions. You can specify state, and callback which will be called to change state.
+`ToggleItem` is an extension for `CallbackItem`
+
+**Specific Arguments:**
+
+- `state_callback` - callback to check current state
+- `change_callback` - callback to toggle current state (True/False)
+
+### `ConfirmItem`
+Implementation of `CallbackItem` with prompt screen before calling custom function. Can be used when we need confirmation for specific action.
+If user select "no" option, callback won't be triggered.
+
+**Specific Arguments:**
+- `question` - can be None, then question "Are you sure?" will be visible
+- `answers` - tuple for `yes` and `no`, it'll simply override default tuple ('yes', 'no')
+
+## Example menu
 ```python
 menu.set_screen(MenuScreen('Main Menu')
     .add(SubMenuItem('WiFi')
@@ -115,49 +126,47 @@ callable, and second is a single arg or tuple with `*args`. For example:
 
 ```python
 CallbackItem('Print it!', (print, 'hello there'))
-# will print: hello there
+# will print: hello there > like print('hello there')
 ```
 
 ```python
 CallbackItem('Print it!', (print, (1, 2, 3)))
-# will print: 1 2 3
+# will print: 1 2 3 > like print(*args) where *args are taken from tuple
 ```
 
 ## Visibility
 
 Every item can be hidden separately by setting named argument `visible` to False or
-by passing callable to 
+by passing callable to check conditions if element should be vissible. Callable should return True or False.
 
 ## CustomItem
 
 To create your own menu logic, you can extend abstract class CustomItem class and implement at least `draw()` and 
 `select()` function.
 
-draw() is called once you select specific menu, and selec() is collect when someone click inside CustomItem.
+`draw()` is called once you click on specifiv CustomItem position, so basically it can do anything you want, what more
+that object has included display, so you can simply draw anything on OLED using driver's methods.
 
-Example usage of some Config class which keeps values in memory:
+Example usage of CustomItem, to draw some status page:
 
 ```python
-class Config(CustomItem):
+class DrawCustomScreen(CustomItem):
 
     def __init__(self, name):
-        super().__init__(name)
-        self.statuses = {}
+      super().__init__(name)
+  
+    def select(self):
+        return self.parent  # this is needed to go back to previous view when SET button is pushed
 
-    def get_status(self, num):
-        try:
-            return self.statuses[num]
-        except KeyError:
-            self.statuses[num] = False
-            return False
-
-    def toggle(self, num):
-        self.statuses[num] = not self.statuses[num]
-
+    def draw(self):
+        self.display.fill(0)
+        self.display.rect(0, 0, self.display.width, self.display.height, 1)
+        self.display.text('SHOW SOME TEXT', 0, 10, 1)
+        self.display.hline(0, 32, self.display.width, 1)
+        self.display.show()
 
 menu.add_screen(MenuScreen('Main Menu')
-    .add(ToggleItem('Config 1', (config.get_status, 1), (config.toggle, 1)))
-    .add(ToggleItem('Config 2', (config.get_status, 2), (config.toggle, 2)))
+    .add(DrawCustomScreen('Text in frame'))
 )
 ```
 

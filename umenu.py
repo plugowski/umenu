@@ -1,26 +1,16 @@
-import framebuf
-
-
-class Icon(framebuf.FrameBuffer):
-
-    def __init__(self, icon, width, height, mapping=framebuf.MONO_VLSB):
-        self.width = width
-        self.height = height
-        super().__init__(icon, width, height, mapping)
-
-
 class MenuItem:
 
     def __init__(self, name: str, decorator=None, visible=None):
         self.parent = None
         self._visible = True if visible is None else visible
+        self._callback = None
         self.is_active = False
         self.name = name
         self.decorator = '' if decorator is None else decorator
 
     @property
     def visible(self):
-        return self._visible if not self._check_callable(self._visible) else self._call_callable(self._visible)
+        return self._visible if not self._check_callable(self._visible, False) else self._call_callable(self._visible)
 
     def click(self):
         raise NotImplementedError()
@@ -28,11 +18,23 @@ class MenuItem:
     def get_decorator(self):
         return self.decorator if not callable(self.decorator) else self.decorator()
 
+    @property
+    def callback(self):
+        return self._callback
+
+    @callback.setter
+    def callback(self, callback):
+        self._check_callable(callback)
+        self._callback = callback
+
     @staticmethod
-    def _check_callable(param):
-        if callable(param) or (type(param) is tuple and callable(param[0])):
-            return True
-        return False
+    def _check_callable(param, raise_error=True):
+        if not(callable(param) or (type(param) is tuple and callable(param[0]))):
+            if raise_error:
+                raise ValueError('callable param should be callable or tuple with callable on first place!')
+            else:
+                return False
+        return True
 
     @staticmethod
     def _call_callable(func, *args):
@@ -66,8 +68,6 @@ class CallbackItem(MenuItem):
 
     def __init__(self, name, callback, decorator=None, return_parent=True, visible=None):
         super().__init__(name, decorator, visible)
-        if not self._check_callable(callback):
-            raise ValueError('callable param should be callable or tuple with callable on first place!')
         self.callback = callback
         self.return_parent = return_parent
 
@@ -81,8 +81,7 @@ class ToggleItem(CallbackItem):
 
     def __init__(self, name, state_callback, change_callback, visible=None):
         super().__init__(name, change_callback, visible=visible)
-        if not self._check_callable(state_callback):
-            raise ValueError('callable param should be callable or tuple with callable on first place!')
+        self._check_callable(state_callback)
         self.state_callback = state_callback
 
     def check_status(self):
@@ -92,12 +91,29 @@ class ToggleItem(CallbackItem):
         return '[x]' if self.check_status() else '[ ]'
 
 
+class ConfirmItem(SubMenuItem):
+
+    def __init__(self, name, callback, question=None, answers=None, decorator='', visible=None):
+        super().__init__(name, decorator, visible=visible)
+        self.callback = callback
+        self._question = question if question is not None else 'Are you sure?'
+        self._answers = answers if answers is not None else ('yes', 'no')
+
+    def click(self):
+        self.reset()
+        self.menu.title = self._question
+
+        for pos in range(len(self._answers)):
+            name = self._answers[pos]
+            self.add(CallbackItem(name, self.callback if pos == 0 else lambda: True), self.parent)
+
+        return self.menu
+
+
 class EnumItem(SubMenuItem):
 
     def __init__(self, name, items, callback, selected=None, visible=None):
         super().__init__(name, visible=visible)
-        if not self._check_callable(callback):
-            raise ValueError('callable param should be callable or tuple with callable on first place!')
         if not isinstance(items, list):
             raise ValueError("items should be a list!")
         self.callback = callback
@@ -124,8 +140,10 @@ class EnumItem(SubMenuItem):
         return self.menu
 
     def _get_index_by_key(self, key):
-        if type(key) is int:
-            return key
+
+        if 'value' not in self.items[0]:
+            if type(key) is int:
+                return key
 
         i = 0
         for item in self.items:
@@ -138,6 +156,7 @@ class EnumItem(SubMenuItem):
         if isinstance(self.items[self.selected], str):
             return self.items[self.selected], self.items[self.selected]
 
+        # noinspection PyTypeChecker
         return self.items[self.selected]['value'], self.items[self.selected]['name']
 
     def _set_decorator(self):
@@ -182,9 +201,8 @@ class CustomItem(MenuItem):
 class ValueItem(CustomItem, CallbackItem):
 
     def __init__(self, name, value_reader, min_v, max_v, step, callback, visible=None):
-        self._check_callable(callback)
         super().__init__(name, visible=visible)
-        self._value = value_reader if not self._check_callable(value_reader) else 0
+        self._value = value_reader if not self._check_callable(value_reader, False) else 0
         self.value_reader = value_reader
         self.min_v = min_v
         self.max_v = max_v
@@ -193,28 +211,34 @@ class ValueItem(CustomItem, CallbackItem):
 
     def draw(self):
         self.display.fill(0)
-        # todo: check if rich_text exists, if not we can't use methods with align
-        self.display.text(str.upper(self.name), None, 0, 1, align=self.display.TEXT_CENTER)
+        if hasattr(self.display, 'rich_text'):
+            self.display.text(str.upper(self.name), None, 0, 1, align=self.display.graphic.TEXT_CENTER)
+            self.display.rich_text(str(self.value), None, 20, 1, size=5, align=self.display.graphic.TEXT_CENTER)
+        else:
+            x_pos = self.display.width - (len(self.name) * 8) - 1
+            self.display.text(str.upper(self.name), x_pos, 0, 1)
+            x_pos = self.display.width - (len(str(self.value)) * 8) - 1
+            self.display.text(str(self.value), x_pos, 20, 1)
+
         self.display.hline(0, 10, self.display.width, 1)
-        self.display.rich_text(str(self.value), None, 20, 1, size=5, align=self.display.TEXT_CENTER)
         self.display.show()
 
     def select(self):
         return self.parent
 
-    def down(self):
+    def up(self):
         if self.value < self.max_v:
             self.value += self.step
         self.draw()
 
-    def up(self):
+    def down(self):
         if self.value > self.min_v:
             self.value -= self.step
         self.draw()
 
     @property
     def value(self):
-        return self._value if not self._check_callable(self.value_reader) else self._call_callable(self.value_reader)
+        return self._value if not self._check_callable(self.value_reader, False) else self._call_callable(self.value_reader)
 
     @value.setter
     def value(self, value):
@@ -271,7 +295,7 @@ class MenuScreen:
         if self.selected + 1 < self.count():
             self.selected = self.selected + 1
 
-    def get(self, position) -> MenuItem:
+    def get(self, position):
 
         if position < 0 or position + 1 > self.count():
             return None
@@ -351,7 +375,6 @@ class Menu:
 
         self.display.show()
 
-    # todo: rewrite to use framebuf instead display itself
     def item_line(self, item: MenuItem, pos):
         menu_y_end = 12
         y = menu_y_end + (pos * self.line_height)
@@ -359,11 +382,12 @@ class Menu:
         background = int(item.is_active)
 
         self.display.fill_rect(0, y, self.display.width, self.line_height, background)
-        self.display.text(item.name, 0, y + v_padding, int(not background))
 
         if hasattr(self.display, 'rich_text'):
-            self.display.rich_text(str.upper(item.get_decorator()), None, y + v_padding, int(not background), align=self.display.TEXT_RIGHT)
+            self.display.rich_text(str.upper(item.name), 2, y + v_padding, int(not background))
+            self.display.rich_text(str.upper(item.get_decorator()), None, y + v_padding, int(not background), align=self.display.graphic.TEXT_RIGHT)
         else:
+            self.display.text(item.name, 0, y + v_padding, int(not background))
             x_pos = self.display.width - (len(item.get_decorator()) * self.font_width) - 1
             self.display.text(item.get_decorator(), x_pos, y + v_padding, int(not background))
 

@@ -262,8 +262,8 @@ class ValueItem(CustomItem, CallbackItem):
 
 class BackItem(MenuItem):
 
-    def __init__(self, parent):
-        super().__init__('< BACK')
+    def __init__(self, parent, label='< BACK'):
+        super().__init__(label)
         self.parent = parent
 
     def click(self):
@@ -372,7 +372,7 @@ class Menu:
 
         self.display.fill(0)
 
-        self.menu_header(self.current_screen.title)
+        self._menu_header(self.current_screen.title)
 
         elements = self.current_screen.count()
         start = self.current_screen.selected - self.per_page + 1 if self.current_screen.selected + 1 > self.per_page else 0
@@ -380,12 +380,12 @@ class Menu:
 
         menu_pos = 0
         for i in range(start, end if end < elements else elements):
-            self.item_line(self.current_screen.get(i), menu_pos)
+            self._item_line(self.current_screen.get(i), menu_pos)
             menu_pos += 1
 
         self.display.show()
 
-    def item_line(self, item: MenuItem, pos):
+    def _item_line(self, item: MenuItem, pos):
         menu_y_end = 12
         y = menu_y_end + (pos * self.line_height)
         v_padding = int((self.line_height - self.font_height) / 2)
@@ -401,7 +401,7 @@ class Menu:
             x_pos = self.display.width - (len(item.get_decorator()) * self.font_width) - 1
             self.display.text(item.get_decorator(), x_pos, y + v_padding, int(not background))
 
-    def menu_header(self, text):
+    def _menu_header(self, text):
         x = int((self.display.width / 2) - (len(text) * self.font_width / 2))
         self.display.text(str.upper(self.current_screen.title), x, 0, 1)
         self.display.hline(0, self.font_height + 2, self.display.width, 1)

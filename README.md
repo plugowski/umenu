@@ -34,6 +34,14 @@ Example above will draw empty menu with title `Main Menu` on top.
 
 Library allows you to add nested screens, as also implement your own screens with logic.
 
+## Menu Navigation
+To walk through menu items you have to trigger methods from `Menu` class.
+
+- `Menu.move(direction: -1|1)` with go to next or previous item. 
+- `Menu.click()` select current item and execute callable, or go into SubMenu.
+- `Menu.reset()` reset current menu state and go to very beginning.
+- `Menu.draw()` redraw menu with current state.
+
 ## Menu Items
 This package already contains some basic Menu Items objects which can be used to build your menu
 

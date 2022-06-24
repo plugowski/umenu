@@ -1,3 +1,10 @@
+try:
+    from display import CENTER, RIGHT
+except ImportError:
+    CENTER = 1
+    RIGHT = 2
+
+
 class MenuItem:
 
     def __init__(self, name: str, decorator=None, visible=None):
@@ -29,7 +36,7 @@ class MenuItem:
 
     @staticmethod
     def _check_callable(param, raise_error=True):
-        if not(callable(param) or (type(param) is tuple and callable(param[0]))):
+        if not (callable(param) or (type(param) is tuple and callable(param[0]))):
             if raise_error:
                 raise ValueError('callable param should be callable or tuple with callable on first place!')
             else:
@@ -46,7 +53,6 @@ class MenuItem:
 
 
 class SubMenuItem(MenuItem):
-
     menu = None
 
     def __init__(self, name, decorator=None, visible=None):
@@ -207,13 +213,14 @@ class ValueItem(CustomItem, CallbackItem):
         self.min_v = min_v
         self.max_v = max_v
         self.step = step
+        self.precision = 0 if '.' not in str(step) else len(str(step).split('.')[1])
         self.callback = callback
 
     def draw(self):
         self.display.fill(0)
         if hasattr(self.display, 'rich_text'):
-            self.display.text(str.upper(self.name), None, 0, 1, align=self.display.graphic.TEXT_CENTER)
-            self.display.rich_text(str(self.value), None, 20, 1, size=5, align=self.display.graphic.TEXT_CENTER)
+            self.display.text(str.upper(self.name), None, 0, 1, align=CENTER)
+            self.display.rich_text(str(self.value), None, 20, 1, size=5, align=CENTER)
         else:
             x_pos = self.display.width - (len(self.name) * 8) - 1
             self.display.text(str.upper(self.name), x_pos, 0, 1)
@@ -228,17 +235,21 @@ class ValueItem(CustomItem, CallbackItem):
 
     def up(self):
         if self.value < self.max_v:
-            self.value += self.step
+            v = self.value + self.step
+            self.value = int(v) if self.precision == 0 else round(v, self.precision)
         self.draw()
 
     def down(self):
         if self.value > self.min_v:
-            self.value -= self.step
+            v = self.value - self.step
+            self.value = int(v) if self.precision == 0 else round(v, self.precision)
         self.draw()
 
     @property
     def value(self):
-        return self._value if not self._check_callable(self.value_reader, False) else self._call_callable(self.value_reader)
+        return self._value \
+            if not self._check_callable(self.value_reader, False) \
+            else self._call_callable(self.value_reader)
 
     @value.setter
     def value(self, value):
@@ -322,8 +333,7 @@ class MenuScreen:
 
 
 class Menu:
-
-    current_screen = None
+    current_screen = None  # type: MenuScreen | CustomItem
 
     def __init__(self, display, per_page: int = 4, line_height: int = 14, font_width: int = 8, font_height: int = 8):
         # todo: replace display and specific driver to framebuf
@@ -385,7 +395,7 @@ class Menu:
 
         if hasattr(self.display, 'rich_text'):
             self.display.rich_text(str.upper(item.name), 2, y + v_padding, int(not background))
-            self.display.rich_text(str.upper(item.get_decorator()), None, y + v_padding, int(not background), align=self.display.graphic.TEXT_RIGHT)
+            self.display.rich_text(str.upper(item.get_decorator()), None, y + v_padding, int(not background), align=RIGHT)
         else:
             self.display.text(item.name, 0, y + v_padding, int(not background))
             x_pos = self.display.width - (len(item.get_decorator()) * self.font_width) - 1

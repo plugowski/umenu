@@ -182,21 +182,22 @@ class CustomItem(MenuItem):
 
     def __init__(self, name, visible=None):
         super().__init__(name, visible=visible)
-        self.display = None  # it is set after initialization via MenuScreen.add()
+        self.display = None  # it is set after initialization via Menu._update_display()
 
     def click(self):
         return self
 
     def up(self):
-        # called when menu.move() is called
+        # called when menu.move(-1) is called
         pass
 
     def down(self):
-        # called when menu.move(-1) is called
+        # called when menu.move(1) is called
         pass
 
     def select(self):
         # called when menu.click() is called (on button press)
+        # should return Instance of MenuItem (usually self.parent - if want to go level up or self to stay in current context)
         raise NotImplementedError()
 
     def draw(self):

@@ -352,6 +352,14 @@ class Menu:
             self._update_display(screen._items)
 
     def move(self, direction: int = 1):
+        if direction > 1 and type(self.current_screen) is not ValueItem:
+                if self.current_screen.selected + 1 == self.current_screen.count():
+                    self.current_screen.selected = 0
+                    if type(self.current_screen) is not MenuScreen:
+                        return self.parent
+                    self.reset()
+                    return
+
         self.current_screen.up() if direction < 0 else self.current_screen.down()
         self.draw()
 

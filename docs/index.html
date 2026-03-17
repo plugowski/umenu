@@ -308,7 +308,7 @@
       <div id="type-desc" class="type-desc"></div>
 
       <div class="form-group">
-        <label class="field-label">Display Name <span style="color:var(--danger)">*</span></label>
+        <label class="field-label">Display Name <span id="modal-name-req" style="color:var(--danger)">*</span></label>
         <input type="text" id="modal-name" placeholder="e.g. WiFi Settings">
       </div>
 
@@ -1074,6 +1074,8 @@ function onTypeChange() {
   const fieldEl = type === 'SliderItem' ? document.getElementById('fields-ValueItem') : document.getElementById('fields-' + type);
   fieldEl?.classList.add('active');
   document.getElementById('type-desc').textContent = TYPE_DESC[type] || '';
+  const nameReq = document.getElementById('modal-name-req');
+  if (nameReq) nameReq.textContent = type === 'SeparatorItem' ? '(optional)' : '*';
   if (type === 'EnumItem' && !editingId) {
     rebuildEnumOptions([{ name: 'Option 1' }, { name: 'Option 2' }]);
   }

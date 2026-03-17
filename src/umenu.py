@@ -178,6 +178,18 @@ class InfoItem(MenuItem):
         return self.parent
 
 
+class SeparatorItem(MenuItem):
+
+    def __init__(self, visible=None):
+        super().__init__('', decorator='', visible=visible)
+
+    def click(self):
+        return self.parent
+
+    def get_decorator(self):
+        return ''
+
+
 class CustomItem(MenuItem):
 
     def __init__(self, name, visible=None):
@@ -261,6 +273,101 @@ class ValueItem(CustomItem, CallbackItem):
         return str(self.value)
 
 
+class SliderItem(ValueItem):
+
+    def draw(self):
+        self.display.fill(0)
+        menu_y_end = 12
+        bar_height = 6
+        bar_y = 28
+        bar_margin = 2
+        bar_width = self.display.width - 2 * bar_margin
+
+        if hasattr(self.display, 'rich_text'):
+            self.display.text(str.upper(self.name), None, 0, 1, align=CENTER)
+            self.display.rich_text(str(self.value), None, 20, 1, size=5, align=CENTER)
+        else:
+            x_pos = self.display.width - (len(self.name) * 8) - 1
+            self.display.text(str.upper(self.name), x_pos, 0, 1)
+            x_pos = self.display.width - (len(str(self.value)) * 8) - 1
+            self.display.text(str(self.value), x_pos, 20, 1)
+
+        self.display.hline(0, 10, self.display.width, 1)
+
+        # Slider track
+        self.display.rect(bar_margin, bar_y, bar_width, bar_height, 1)
+        # Filled portion
+        if self.max_v > self.min_v:
+            ratio = (self.value - self.min_v) / (self.max_v - self.min_v)
+            fill_width = max(0, int((bar_width - 2) * ratio))
+            if fill_width > 0:
+                self.display.fill_rect(bar_margin + 1, bar_y + 1, fill_width, bar_height - 2, 1)
+
+        self.display.show()
+
+
+class MultiSelectItem(SubMenuItem):
+
+    def __init__(self, name, items, callback, selected=None, visible=None):
+        super().__init__(name, visible=visible)
+        if not isinstance(items, list):
+            raise ValueError("items should be a list!")
+        self.callback = callback
+        self.items = items
+        self.selected = set() if selected is None else set(selected if hasattr(selected, '__iter__') and not isinstance(selected, str) else [selected])
+        self._set_decorator()
+
+    def _get_value(self, index):
+        if isinstance(self.items[index], dict):
+            return self.items[index].get('value', self.items[index]['name'])
+        return self.items[index]
+
+    def _get_name(self, index):
+        if isinstance(self.items[index], dict):
+            return self.items[index]['name']
+        return self.items[index]
+
+    def _set_decorator(self):
+        count = len(self.selected)
+        self.decorator = '{} selected'.format(count) if count else 'none'
+
+    def _is_selected(self, index):
+        return index in self.selected
+
+    def _toggle(self, index):
+        if index in self.selected:
+            self.selected.discard(index)
+        else:
+            self.selected.add(index)
+        self._set_decorator()
+        selected_values = [self._get_value(i) for i in sorted(self.selected)]
+        self._call_callable(self.callback, selected_values)
+
+    def click(self):
+        self.reset()
+        for pos in range(len(self.items)):
+            name = self._get_name(pos)
+            state_cb = (self._is_selected, pos)
+            change_cb = (self._toggle, pos)
+            self.add(ToggleItem(name, state_cb, change_cb), self.parent)
+        return self.menu
+
+
+class DynamicSubMenuItem(SubMenuItem):
+
+    def __init__(self, name, items_callback, decorator=None, visible=None):
+        super().__init__(name, '>' if decorator is None else decorator, visible)
+        self._check_callable(items_callback)
+        self.items_callback = items_callback
+
+    def click(self):
+        self.reset()
+        self.menu.title = self.name
+        for item in self._call_callable(self.items_callback):
+            self.add(item, self.parent)
+        return self.menu
+
+
 class BackItem(MenuItem):
 
     def __init__(self, parent, label='< BACK'):
@@ -326,6 +433,9 @@ class MenuScreen:
         if type(item) is BackItem:
             self.selected = 0
 
+        if type(item) is DynamicSubMenuItem:
+            item.click()
+            return item.menu
         if type(item) is SubMenuItem:
             return item.menu
         else:
@@ -358,6 +468,8 @@ class Menu:
     def click(self):
         self.current_screen = self.current_screen.select()
         if self.current_screen is not None:
+            if type(self.current_screen) is MenuScreen:
+                self._update_display(self.current_screen._items)
             self.draw()
 
     def reset(self):
@@ -393,6 +505,11 @@ class Menu:
         background = int(item.is_active)
 
         self.display.fill_rect(0, y, self.display.width, self.line_height, background)
+
+        if type(item) is SeparatorItem:
+            line_y = y + int(self.line_height / 2) - 1
+            self.display.hline(2, line_y, self.display.width - 4, int(not background))
+            return
 
         if hasattr(self.display, 'rich_text'):
             self.display.rich_text(str.upper(item.name), 2, y + v_padding, int(not background))

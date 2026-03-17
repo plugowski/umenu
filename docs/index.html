@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>uMenu — Config Generator</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1c1f2e; --surface2: #252840; --surface3: #1a1d2b;
+      --border: #2e3150; --accent: #6c72ff; --accent-hover: #8387ff;
+      --danger: #ff5252; --success: #2ecc71; --warning: #f39c12;
+      --text: #e8e9f0; --text-muted: #8890b0; --code-bg: rgba(0,0,0,0.3); --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px 16px 60px; line-height: 1.5; }
+    .container { max-width: 940px; margin: 0 auto; }
+
+    /* Header */
+    .page-header { text-align: center; padding: 40px 0 32px; }
+    .page-header h1 { font-size: 1.85rem; font-weight: 700; letter-spacing: -0.02em; }
+    .page-header p { color: var(--text-muted); margin-top: 8px; font-size: 0.95rem; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 18px; overflow: hidden; }
+    .card-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; gap: 12px; }
+    .card-header:hover { background: rgba(255,255,255,0.02); }
+    .card-header h2 { font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .card-body { padding: 20px; }
+    .card-body.collapsed { display: none; }
+    .chevron { width: 18px; height: 18px; flex-shrink: 0; color: var(--text-muted); transition: transform 0.2s; }
+    .chevron.open { transform: rotate(180deg); }
+
+    /* Forms */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-grid.cols-1 { grid-template-columns: 1fr; }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label.field-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    small { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    input[type="text"], input[type="number"], select, textarea {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 11px; color: var(--text); font-size: 0.9rem; font-family: inherit; width: 100%; transition: border-color 0.15s;
+    }
+    textarea { resize: vertical; font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.82rem; line-height: 1.5; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 0.6; }
+    select option { background: var(--surface2); }
+
+    /* Info box */
+    .info-box { background: rgba(108,114,255,0.07); border: 1px solid rgba(108,114,255,0.22); border-radius: 7px; padding: 11px 14px; font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px; }
+    .info-box strong { color: var(--text); }
+    .info-box code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.82em; color: #a8b5ff; }
+
+    /* Toggle switch */
+    .toggle-row { display: flex; align-items: center; margin: 8px 0; }
+    .toggle-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.88rem; user-select: none; }
+    .toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-sw { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle-sw::before { content: ''; position: absolute; inset: 0; background: var(--border); border-radius: 10px; transition: background 0.2s; }
+    .toggle-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .toggle-input:checked + .toggle-sw::before { background: var(--accent); }
+    .toggle-input:checked + .toggle-sw::after { transform: translateX(16px); background: #fff; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; border: none; cursor: pointer; font-size: 0.88rem; font-weight: 600; font-family: inherit; transition: all 0.15s; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-ghost { background: transparent; border: none; color: var(--text-muted); padding: 5px 8px; font-size: 0.8rem; font-family: inherit; cursor: pointer; border-radius: 5px; }
+    .btn-ghost:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .btn-danger-ghost { background: transparent; border: none; color: var(--text-muted); padding: 4px 7px; font-size: 0.8rem; font-family: inherit; cursor: pointer; border-radius: 5px; }
+    .btn-danger-ghost:hover { color: var(--danger); background: rgba(255,82,82,0.08); }
+    .btn-generate { background: linear-gradient(135deg, #6c72ff 0%, #9b59ff 100%); color: #fff; padding: 14px 40px; font-size: 1rem; border-radius: 9px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; box-shadow: 0 4px 22px rgba(108,114,255,0.3); transition: all 0.15s; }
+    .btn-generate:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,114,255,0.4); }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+
+    /* Tree */
+    .tree-root { min-height: 60px; padding-bottom: 28px; border-radius: 6px; }
+    .tree-item { position: relative; }
+    .item-row {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px;
+      margin-bottom: 4px; background: var(--surface2); border: 1px solid var(--border);
+      transition: border-color 0.12s; cursor: grab; user-select: none;
+    }
+    .item-row:hover { border-color: rgba(108,114,255,0.3); }
+    .item-row:active { cursor: grabbing; }
+    .item-row.drop-above { border-top: 2px solid var(--accent); }
+    .tree-item.dragging > .item-row { opacity: 0.35; }
+    .expand-btn { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 0.65rem; flex-shrink: 0; transition: all 0.15s; }
+    .expand-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .expand-btn.expanded { background: rgba(108,114,255,0.1); border-color: var(--accent); color: var(--accent); }
+    .expand-ph { width: 22px; flex-shrink: 0; }
+    .type-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-SubMenuItem  { background: rgba(108,114,255,0.15); color: #8387ff; border: 1px solid rgba(108,114,255,0.3); }
+    .badge-CallbackItem { background: rgba(46,204,113,0.12); color: #2ecc71; border: 1px solid rgba(46,204,113,0.3); }
+    .badge-ToggleItem   { background: rgba(243,156,18,0.12); color: #f39c12; border: 1px solid rgba(243,156,18,0.3); }
+    .badge-EnumItem     { background: rgba(155,89,182,0.15); color: #b07ee8; border: 1px solid rgba(155,89,182,0.3); }
+    .badge-InfoItem     { background: rgba(127,140,141,0.15); color: #95a5a6; border: 1px solid rgba(127,140,141,0.3); }
+    .badge-ValueItem    { background: rgba(26,188,156,0.12); color: #1abc9c; border: 1px solid rgba(26,188,156,0.3); }
+    .badge-ConfirmItem  { background: rgba(231,76,60,0.12); color: #e74c3c; border: 1px solid rgba(231,76,60,0.3); }
+    .badge-CustomItem   { background: rgba(233,30,99,0.12); color: #e91e63; border: 1px solid rgba(233,30,99,0.3); }
+    .badge-SliderItem       { background: rgba(26,188,156,0.12); color: #1abc9c; border: 1px solid rgba(26,188,156,0.3); }
+    .badge-SeparatorItem    { background: rgba(127,140,141,0.2); color: #95a5a6; border: 1px solid rgba(127,140,141,0.4); }
+    .badge-MultiSelectItem  { background: rgba(155,89,182,0.15); color: #b07ee8; border: 1px solid rgba(155,89,182,0.3); }
+    .badge-DynamicSubMenuItem { background: rgba(52,152,219,0.15); color: #5dade2; border: 1px solid rgba(52,152,219,0.3); }
+    .item-name { flex: 1; font-size: 0.88rem; font-weight: 500; color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; font-weight: 400; }
+    .item-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .children-container { padding-left: 32px; margin-bottom: 4px; padding-bottom: 24px; border-radius: 6px; }
+    .drag-container-hover { outline: 2px dashed var(--accent) !important; background: rgba(108,114,255,0.04) !important; }
+    .empty-tree { text-align: center; padding: 36px 20px; color: var(--text-muted); font-size: 0.9rem; border: 2px dashed var(--border); border-radius: 8px; }
+    .empty-tree svg { display: block; margin: 0 auto 12px; opacity: 0.4; }
+
+    /* Builder toolbar */
+    .builder-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .builder-toolbar .spacer { flex: 1; }
+
+    /* Code preview with syntax highlighting */
+    .code-pre { background: var(--surface3); border: 1px solid var(--border); border-radius: 7px; padding: 16px; font-family: 'Fira Code', 'Consolas', 'Monaco', monospace; font-size: 0.8rem; line-height: 1.65; color: #c9d1d9; overflow-x: auto; white-space: pre; max-height: 480px; overflow-y: auto; }
+    .code-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .code-toolbar span { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    /* Syntax highlight spans */
+    .hl-kw      { color: #ff79c6; }
+    .hl-str     { color: #f1fa8c; }
+    .hl-num     { color: #bd93f9; }
+    .hl-comment { color: #6272a4; font-style: italic; }
+    .hl-class   { color: #8be9fd; }
+    .hl-fn      { color: #50fa7b; }
+
+    /* Modal */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0; max-width: 560px; width: 100%; box-shadow: 0 16px 60px rgba(0,0,0,0.6); margin: auto; }
+    .modal-head { padding: 18px 22px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-head h3 { font-size: 1rem; font-weight: 600; }
+    .modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+    .type-fields { display: none; flex-direction: column; gap: 14px; }
+    .type-fields.active { display: flex; }
+    .type-desc { font-size: 0.8rem; color: var(--text-muted); background: var(--surface2); border-radius: 6px; padding: 8px 12px; border-left: 3px solid var(--accent); }
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* Visibility builder */
+    .vis-radio-group { display: flex; flex-direction: column; gap: 6px; }
+    .vis-radio-opt { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; color: var(--text); }
+    .vis-radio-opt input[type="radio"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+    .vis-radio-opt code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.8em; color: #a8b5ff; }
+
+    /* Enum options */
+    .enum-option-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .enum-option-row input { flex: 1; }
+    .enum-option-row .val-input { flex: 0.6; }
+
+    /* Move modal */
+    .move-target-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+    .move-target-btn { text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 13px; cursor: pointer; font-size: 0.87rem; font-family: inherit; color: var(--text); transition: all 0.12s; width: 100%; }
+    .move-target-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Templates */
+    .template-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .template-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; text-align: left; }
+    .template-card:hover { border-color: var(--accent); background: rgba(108,114,255,0.06); }
+    .template-card h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 3px; }
+    .template-card p { font-size: 0.76rem; color: var(--text-muted); }
+
+    /* Generate section */
+    .generate-section { text-align: center; padding: 28px 0 12px; }
+    .generate-hint { margin-top: 14px; color: var(--text-muted); font-size: 0.83rem; }
+    .generate-hint code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; color: #a8b5ff; font-size: 0.85em; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--success); color: #fff; padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 0.88rem; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 2000; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* Validation */
+    .field-error { border-color: var(--danger) !important; }
+    .section-label { font-size: 0.76rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+
+    @media (max-width: 620px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+      .template-grid { grid-template-columns: 1fr 1fr; } /* 2 cols on small */
+      .item-actions .btn-ghost:not(:last-child) { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="page-header">
+    <h1>🗂️ uMenu Config Generator</h1>
+    <p>Build your nested OLED menu and download ready-to-use MicroPython code</p>
+  </div>
+
+  <!-- 1. Menu Config -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard(this)">
+      <h2>⚙️ Menu Configuration</h2>
+      <svg class="chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group"><label class="field-label">Screen Title</label><input type="text" id="screen_title" value="Main Menu" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="field-label">Menu Variable Name</label><input type="text" id="menu_var" value="menu" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="field-label">Display Variable Name</label><input type="text" id="display_var" value="display" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="field-label">Items Per Page</label><input type="number" id="per_page" value="4" min="1" max="10" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="field-label">Line Height (px)</label><input type="number" id="line_height" value="14" min="8" max="32" oninput="updatePreview()"></div>
+        <div class="form-group"><label class="field-label">Font Width (px)</label><input type="number" id="font_width" value="8" min="4" max="16" oninput="updatePreview()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Templates -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard(this)">
+      <h2>🚀 Quick Start Templates</h2>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="card-body collapsed">
+      <div class="info-box">Load a template to get started quickly. <strong>This replaces your current menu.</strong></div>
+      <div class="template-grid">
+        <div class="template-card" onclick="loadTemplate('device')"><h4>📡 IoT Device</h4><p>WiFi toggle, sensor readings, settings submenu</p></div>
+        <div class="template-card" onclick="loadTemplate('settings')"><h4>⚙️ Settings Panel</h4><p>Brightness, speed sliders, enum, reset confirm</p></div>
+        <div class="template-card" onclick="loadTemplate('minimal')"><h4>✨ Minimal</h4><p>A simple two-item menu to start from scratch</p></div>
+        <div class="template-card" onclick="loadTemplate('monitor')"><h4>📊 Live Monitor</h4><p>Auto-refreshing sensor dashboard via CustomItem — scrollable pages, exits on click</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Menu Builder -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard(this)">
+      <h2>🌳 Menu Builder <span id="item-count-badge" style="font-size:0.8rem;font-weight:400;color:var(--text-muted);margin-left:6px"></span></h2>
+      <svg class="chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        Drag rows to reorder or move between submenus. Use the <strong>Move to…</strong> button for precise repositioning.
+        <strong>SubMenuItem</strong> creates nested pages. Drop items onto the dashed zone inside a submenu to nest them.
+      </div>
+      <div class="builder-toolbar">
+        <button class="btn btn-secondary btn-sm" onclick="exportJSON()">💾 Export JSON</button>
+        <button class="btn btn-secondary btn-sm" onclick="triggerImport()">📂 Import JSON</button>
+        <input type="file" id="json-import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+        <span class="spacer"></span>
+        <button class="btn btn-secondary" onclick="openAddModal(null)">+ Add Root Item</button>
+      </div>
+      <div id="tree-root" class="tree-root" ondragover="onDragOverContainer(event)" ondrop="onDropToContainer(event, null)"></div>
+    </div>
+  </div>
+
+  <!-- 4. Code Preview -->
+  <div class="card">
+    <div class="card-header" onclick="toggleCard(this)">
+      <h2>📄 Generated Code</h2>
+      <svg class="chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="card-body">
+      <div class="code-toolbar">
+        <span>Python / MicroPython</span>
+        <button class="btn btn-secondary btn-sm" onclick="copyCode()">📋 Copy</button>
+      </div>
+      <pre id="code-preview" class="code-pre"># Add items to see generated code</pre>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <div class="generate-section">
+    <button class="btn-generate" onclick="downloadCode()">⬇ Download menu.py</button>
+    <p class="generate-hint">
+      Place <code>menu.py</code> alongside <code>umenu.py</code>.
+      Call <code>menu.move(-1)</code> / <code>menu.move()</code> for navigation, <code>menu.click()</code> to select.
+    </p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Edit / Add Item Modal ─────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="edit-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Add Item</h3>
+      <button class="btn-ghost" onclick="closeModal()" style="font-size:1rem">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="field-label">Item Type</label>
+        <select id="modal-type" onchange="onTypeChange()">
+          <option value="CallbackItem">CallbackItem — runs a function</option>
+          <option value="SubMenuItem">SubMenuItem — opens a submenu</option>
+          <option value="ToggleItem">ToggleItem — on/off toggle</option>
+          <option value="EnumItem">EnumItem — choose from a list</option>
+          <option value="MultiSelectItem">MultiSelectItem — choose multiple</option>
+          <option value="DynamicSubMenuItem">DynamicSubMenuItem — submenu from callback</option>
+          <option value="InfoItem">InfoItem — display-only label</option>
+          <option value="ValueItem">ValueItem — adjust a number</option>
+          <option value="SliderItem">SliderItem — value with bar</option>
+          <option value="ConfirmItem">ConfirmItem — confirm before action</option>
+          <option value="SeparatorItem">SeparatorItem — horizontal line</option>
+          <option value="CustomItem">CustomItem — write your own code</option>
+        </select>
+      </div>
+
+      <div id="type-desc" class="type-desc"></div>
+
+      <div class="form-group">
+        <label class="field-label">Display Name <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="modal-name" placeholder="e.g. WiFi Settings">
+      </div>
+
+      <!-- Visibility builder -->
+      <div class="form-group">
+        <label class="field-label">Visibility</label>
+        <div class="vis-radio-group">
+          <label class="vis-radio-opt"><input type="radio" name="modal-vis-mode" value="always" checked onchange="updateVisUI()"> Always visible</label>
+          <label class="vis-radio-opt"><input type="radio" name="modal-vis-mode" value="fn" onchange="updateVisUI()"> Show when a function returns <code>True</code></label>
+          <label class="vis-radio-opt"><input type="radio" name="modal-vis-mode" value="not" onchange="updateVisUI()"> Hide when a function returns <code>True</code> (inverted)</label>
+        </div>
+        <div id="vis-fn-group" style="display:none; margin-top:8px; flex-direction:column; gap:5px">
+          <input type="text" id="modal-visible-fn" placeholder="is_wifi_connected">
+          <small>Name of the function that returns True/False</small>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- SubMenuItem -->
+      <div id="fields-SubMenuItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Decorator (optional)</label>
+          <input type="text" id="sub-decorator" placeholder="&gt; (default arrow)">
+          <small>Symbol shown on the right side</small>
+        </div>
+      </div>
+
+      <!-- CallbackItem -->
+      <div id="fields-CallbackItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Callback Function <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="cb-callback" placeholder="my_function">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Argument (optional)</label>
+          <input type="text" id="cb-arg" placeholder="'hello' or (arg1, arg2)">
+          <small>Passed as second tuple element: <code>(my_function, arg)</code></small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Decorator (optional)</label>
+          <input type="text" id="cb-decorator" placeholder="→">
+        </div>
+        <div class="toggle-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="cb-return-parent" class="toggle-input" checked>
+            <span class="toggle-sw"></span>
+            Return to parent menu after callback
+          </label>
+        </div>
+      </div>
+
+      <!-- ToggleItem -->
+      <div id="fields-ToggleItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">State Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="tog-state-cb" placeholder="get_wifi_status">
+          <small>Returns <code>True</code> (on) or <code>False</code> (off)</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">State Callback Argument (optional)</label>
+          <input type="text" id="tog-state-arg" placeholder="optional argument">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Change Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="tog-change-cb" placeholder="toggle_wifi">
+          <small>Called when user clicks the item</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Change Callback Argument (optional)</label>
+          <input type="text" id="tog-change-arg" placeholder="optional argument">
+        </div>
+      </div>
+
+      <!-- EnumItem -->
+      <div id="fields-EnumItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="enum-callback" placeholder="on_mode_selected">
+          <small>Called with selected value when user picks an option</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Options <span style="color:var(--danger)">*</span></label>
+          <div id="enum-options-list"></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addEnumOption()">+ Add Option</button>
+          <div class="toggle-row" style="margin-top:8px">
+            <label class="toggle-label">
+              <input type="checkbox" id="enum-has-values" class="toggle-input" onchange="toggleEnumValues()">
+              <span class="toggle-sw"></span>
+              Options have separate values (name + value)
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Initial Selection</label>
+          <input type="number" id="enum-selected" value="0" min="0">
+          <small>Index of the pre-selected option (0 = first)</small>
+        </div>
+      </div>
+
+      <!-- InfoItem -->
+      <div id="fields-InfoItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Decorator / Value</label>
+          <input type="text" id="info-decorator" placeholder="ok  or  45.1°C">
+          <small>Text shown on the right side</small>
+        </div>
+      </div>
+
+      <!-- ValueItem -->
+      <div id="fields-ValueItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Initial Value or Reader <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="val-reader" placeholder="50  or  get_speed">
+          <small>A number or a callable returning the current value</small>
+        </div>
+        <div class="form-grid cols-3" style="margin-bottom:0">
+          <div class="form-group"><label class="field-label">Min</label><input type="number" id="val-min" value="0" step="any"></div>
+          <div class="form-group"><label class="field-label">Max</label><input type="number" id="val-max" value="100" step="any"></div>
+          <div class="form-group"><label class="field-label">Step</label><input type="number" id="val-step" value="1" step="any"></div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="val-callback" placeholder="set_speed">
+          <small>Called with the new value after each change</small>
+        </div>
+      </div>
+
+      <!-- MultiSelectItem -->
+      <div id="fields-MultiSelectItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="multi-callback" placeholder="on_selection_changed">
+          <small>Called with list of selected values when user toggles options</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Options <span style="color:var(--danger)">*</span></label>
+          <div id="multi-options-list"></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="addMultiOption()">+ Add Option</button>
+          <div class="toggle-row" style="margin-top:8px">
+            <label class="toggle-label">
+              <input type="checkbox" id="multi-has-values" class="toggle-input" onchange="toggleMultiValues()">
+              <span class="toggle-sw"></span>
+              Options have separate values (name + value)
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Initial selection (indices)</label>
+          <input type="text" id="multi-selected" placeholder="0, 2  or leave empty">
+          <small>Comma-separated indices of pre-selected options</small>
+        </div>
+      </div>
+
+      <!-- DynamicSubMenuItem -->
+      <div id="fields-DynamicSubMenuItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Items Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="dyn-callback" placeholder="get_wifi_networks">
+          <small>Callable with no args that returns a list of MenuItem instances</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Decorator (optional)</label>
+          <input type="text" id="dyn-decorator" placeholder="&gt; (default)">
+        </div>
+      </div>
+
+      <!-- SeparatorItem -->
+      <div id="fields-SeparatorItem" class="type-fields">
+        <div class="info-box" style="margin-bottom:0">A horizontal line in the menu. Display name can be left empty.</div>
+      </div>
+
+      <!-- ConfirmItem -->
+      <div id="fields-ConfirmItem" class="type-fields">
+        <div class="form-group">
+          <label class="field-label">Callback <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="conf-callback" placeholder="factory_reset">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Argument (optional)</label>
+          <input type="text" id="conf-arg" placeholder="optional argument">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Confirmation Question</label>
+          <input type="text" id="conf-question" placeholder="Are you sure?">
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="field-label">Yes Label</label><input type="text" id="conf-yes" value="yes"></div>
+          <div class="form-group"><label class="field-label">No Label</label><input type="text" id="conf-no" value="no"></div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Decorator (optional)</label>
+          <input type="text" id="conf-decorator" placeholder="⚠">
+        </div>
+      </div>
+
+      <!-- CustomItem -->
+      <div id="fields-CustomItem" class="type-fields">
+        <div class="info-box" style="margin-bottom:0">
+          Implement <code>draw()</code> to render to <code>self.display</code>, and <code>select()</code> to handle clicks.
+          Return <code>self</code> to stay active, or <code>self.parent</code> to go back.
+        </div>
+        <div class="form-group">
+          <label class="field-label">Class Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="cust-classname" placeholder="MyCustomItem">
+        </div>
+        <div class="form-group">
+          <label class="field-label">What should happen when this item is opened / displayed?</label>
+          <textarea id="cust-draw" rows="4" placeholder="# self.display is your framebuf-compatible display
+self.display.fill(0)
+self.display.text('Hello!', 10, 20, 1)
+self.display.show()"></textarea>
+          <small>Body of <code>draw(self)</code> — called continuously while this item is active</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">What should happen when the user clicks / confirms?</label>
+          <textarea id="cust-select" rows="3" placeholder="do_something()
+return self.parent  # go back to parent menu"></textarea>
+          <small>Body of <code>select(self)</code></small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">What happens on scroll up / button up? (optional)</label>
+          <textarea id="cust-up" rows="2" placeholder="pass"></textarea>
+          <small>Body of <code>up(self)</code></small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">What happens on scroll down / button down? (optional)</label>
+          <textarea id="cust-down" rows="2" placeholder="pass"></textarea>
+          <small>Body of <code>down(self)</code></small>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModal()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Move To Modal ──────────────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="move-modal" onclick="if(event.target===this)closeMoveModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <h3>Move Item To…</h3>
+      <button class="btn-ghost" onclick="closeMoveModal()" style="font-size:1rem">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" style="margin-bottom:0">Choose a destination. The item will be appended at the end of the selected location.</div>
+      <div class="move-target-list" id="move-target-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let items = [];
+let nextId = 1;
+let editingId = null;
+let editingParentId = null;
+let expandedIds = new Set();
+let enumOptionsHaveValues = false;
+let multiOptionsHaveValues = false;
+let movingItemId = null;
+let dragState = null;
+
+// ─── Type descriptions ────────────────────────────────────────────────────────
+const TYPE_DESC = {
+  SubMenuItem:  'Creates a nested submenu page. Users navigate into it with a click and exit via the auto-generated Back button.',
+  CallbackItem: 'Executes a Python function when clicked, then optionally returns to the parent menu.',
+  ToggleItem:   'Shows a checkbox [x]/[ ] next to the item. One callback reads the current state, another toggles it.',
+  EnumItem:     'Opens a sub-list of options. The user picks one and a callback is called with the selected value.',
+  MultiSelectItem: 'Multiple selection: opens a submenu of toggles; callback receives a list of selected values.',
+  DynamicSubMenuItem: 'Submenu filled by a callback each time it is opened (e.g. WiFi scan results).',
+  InfoItem:     'Read-only label with an optional right-side value. No action on click.',
+  ValueItem:    'Lets the user increment/decrement a numeric value within min/max bounds using up/down navigation.',
+  SliderItem:   'Same as ValueItem but draws a horizontal bar (e.g. volume, brightness).',
+  ConfirmItem:  'Shows a yes/no confirmation before executing the callback — great for destructive actions.',
+  SeparatorItem: 'Non-clickable horizontal line to group menu sections. Name can be empty.',
+  CustomItem:   'You write the draw(), select(), up(), and down() methods. Full control over rendering and behavior.',
+};
+
+// ─── Syntax highlighting ──────────────────────────────────────────────────────
+const HL_KEYWORDS = new Set(['from','import','class','def','return','if','else','elif','for','while','pass','None','True','False','not','and','or','in','self','lambda']);
+const HL_CLASSES  = new Set(['Menu','MenuScreen','SubMenuItem','CallbackItem','ToggleItem','EnumItem','MultiSelectItem','DynamicSubMenuItem','InfoItem','ValueItem','SliderItem','ConfirmItem','SeparatorItem','CustomItem']);
+
+function highlightPython(code) {
+  return code.split('\n').map(highlightLine).join('\n');
+}
+
+function highlightLine(line) {
+  // Find comment start outside strings
+  let commentStart = -1, inStr = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inStr) { if (c === '\\') { i++; continue; } if (c === inStr) inStr = null; continue; }
+    if (c === '"' || c === "'") { inStr = c; continue; }
+    if (c === '#') { commentStart = i; break; }
+  }
+  const codePart    = commentStart >= 0 ? line.slice(0, commentStart) : line;
+  const commentPart = commentStart >= 0 ? line.slice(commentStart) : '';
+
+  let html = '', i = 0;
+  while (i < codePart.length) {
+    const c = codePart[i];
+    // String literal
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < codePart.length) { if (codePart[j] === '\\') { j += 2; continue; } if (codePart[j] === c) { j++; break; } j++; }
+      html += `<span class="hl-str">${escHtml(codePart.slice(i, j))}</span>`; i = j; continue;
+    }
+    // Identifier / keyword / class
+    if (/[a-zA-Z_]/.test(c)) {
+      let j = i; while (j < codePart.length && /\w/.test(codePart[j])) j++;
+      const word = codePart.slice(i, j);
+      if (HL_KEYWORDS.has(word))     html += `<span class="hl-kw">${word}</span>`;
+      else if (HL_CLASSES.has(word)) html += `<span class="hl-class">${word}</span>`;
+      else if (codePart[j] === '(') html += `<span class="hl-fn">${escHtml(word)}</span>`;
+      else                           html += escHtml(word);
+      i = j; continue;
+    }
+    // Number
+    if (/\d/.test(c)) {
+      let j = i; while (j < codePart.length && /[\d.]/.test(codePart[j])) j++;
+      html += `<span class="hl-num">${codePart.slice(i, j)}</span>`; i = j; continue;
+    }
+    html += escHtml(c); i++;
+  }
+  if (commentPart) html += `<span class="hl-comment">${escHtml(commentPart)}</span>`;
+  return html;
+}
+
+// ─── Tree rendering ───────────────────────────────────────────────────────────
+function renderTree() {
+  const root = document.getElementById('tree-root');
+  root.innerHTML = items.length === 0
+    ? `<div class="empty-tree"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h6v6H3zM15 3h6v6h-6zM9 15l3-3 3 3M12 12v6"/></svg><div>No items yet. Click <strong>+ Add Root Item</strong> to begin.</div></div>`
+    : renderItems(items, null);
+  const total = countAll(items);
+  document.getElementById('item-count-badge').textContent = total + ' item' + (total !== 1 ? 's' : '');
+}
+
+function countAll(arr) {
+  let n = 0;
+  arr.forEach(item => { n++; if (item.children) n += countAll(item.children); });
+  return n;
+}
+
+function renderItems(arr, parentId) {
+  return arr.map((item, idx) => renderItem(item, arr, parentId, idx)).join('');
+}
+
+function renderItem(item, siblings, parentId, idx) {
+  const isSub = item.type === 'SubMenuItem';
+  const isExpanded = expandedIds.has(String(item.id));
+  const hint = getItemHint(item);
+  const pid = parentId === null ? 'null' : parentId;
+
+  const moveUp   = idx > 0
+    ? `<button class="btn-ghost" title="Move Up" onclick="moveItem('${item.id}','${pid}',-1)">↑</button>`
+    : '<span style="width:29px;display:inline-block"></span>';
+  const moveDown = idx < siblings.length - 1
+    ? `<button class="btn-ghost" title="Move Down" onclick="moveItem('${item.id}','${pid}',1)">↓</button>`
+    : '<span style="width:29px;display:inline-block"></span>';
+
+  const expandBtn = isSub
+    ? `<button class="expand-btn ${isExpanded ? 'expanded' : ''}" onclick="toggleExpand('${item.id}')">${isExpanded ? '▼' : '▶'}</button>`
+    : '<span class="expand-ph"></span>';
+
+  let html = `<div class="tree-item" id="tree-item-${item.id}">
+    <div class="item-row"
+         draggable="true"
+         data-item-id="${item.id}"
+         data-parent-id="${pid}"
+         ondragstart="onDragStart(event)"
+         ondragend="onDragEnd(event)"
+         ondragover="onDragOver(event)"
+         ondrop="onDrop(event)">
+      ${expandBtn}
+      <span class="type-badge badge-${item.type}">${item.type.replace('Item','').replace('Sub','Sub ')}</span>
+      <span class="item-name">${escHtml(item.name || '(unnamed)')}${hint ? ` <span class="item-hint">${hint}</span>` : ''}</span>
+      <div class="item-actions">
+        ${moveUp}${moveDown}
+        <button class="btn-ghost btn-sm" onclick="openMoveModal('${item.id}')" title="Move to…">↕</button>
+        <button class="btn-ghost btn-sm" onclick="openEditModal('${item.id}')">✏️</button>
+        <button class="btn-danger-ghost" onclick="deleteItem('${item.id}','${pid}')" title="Remove">✕</button>
+      </div>
+    </div>`;
+
+  if (isSub) {
+    html += `<div class="children-container" id="children-${item.id}" ${isExpanded ? '' : 'style="display:none"'}
+                  ondragover="onDragOverContainer(event)"
+                  ondrop="onDropToContainer(event, '${item.id}')">`;
+    if (item.children && item.children.length) {
+      html += renderItems(item.children, item.id);
+    } else {
+      html += `<div style="padding:6px 10px; color:var(--text-muted); font-size:0.8rem">No items yet in this submenu</div>`;
+    }
+    html += `<div style="margin-top:4px">
+              <button class="btn btn-secondary btn-sm" onclick="openAddModal('${item.id}')">+ Add Item to "${escHtml(item.name)}"</button>
+            </div>
+          </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function getItemHint(item) {
+  switch(item.type) {
+    case 'CallbackItem': return item.callback ? `→ ${item.callback}${item.callbackArg ? '(…)' : ''}` : '';
+    case 'ToggleItem':   return item.stateCallback ? `${item.stateCallback} / ${item.changeCallback}` : '';
+    case 'EnumItem':     return item.options ? `${item.options.length} options` : '';
+    case 'MultiSelectItem': return item.options ? `${item.options.length} options` : '';
+    case 'DynamicSubMenuItem': return item.itemsCallback ? `→ ${item.itemsCallback}` : '';
+    case 'InfoItem':     return item.decorator ? `"${item.decorator}"` : '';
+    case 'ValueItem':
+    case 'SliderItem':   return item.minVal !== undefined ? `${item.minVal}–${item.maxVal}, step ${item.step}` : '';
+    case 'ConfirmItem':  return item.callback ? `→ ${item.callback}` : '';
+    case 'CustomItem':   return item.className || '';
+    case 'SubMenuItem':  return item.children ? `${item.children.length} child item(s)` : '';
+    case 'SeparatorItem': return '—';
+    default: return '';
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Tree mutations ───────────────────────────────────────────────────────────
+function findInTree(arr, id) {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].id == id) return { arr, idx: i, item: arr[i] }; // intentional ==
+    if (arr[i].children) { const r = findInTree(arr[i].children, id); if (r) return r; }
+  }
+  return null;
+}
+
+function toggleExpand(id) {
+  id = String(id);
+  if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+  renderTree();
+}
+
+function moveItem(id, parentId, dir) {
+  const target = parentId && parentId !== 'null' ? findInTree(items, parentId) : null;
+  const arr = target ? target.item.children : items;
+  const found = findInTree(arr, id);
+  if (!found) return;
+  const newIdx = found.idx + dir;
+  if (newIdx < 0 || newIdx >= arr.length) return;
+  [arr[found.idx], arr[newIdx]] = [arr[newIdx], arr[found.idx]];
+  renderTree(); updatePreview();
+}
+
+function deleteItem(id, parentId) {
+  const target = parentId && parentId !== 'null' ? findInTree(items, parentId) : null;
+  const arr = target ? target.item.children : items;
+  const found = findInTree(arr, id);
+  if (!found) return;
+  arr.splice(found.idx, 1);
+  expandedIds.delete(String(id));
+  renderTree(); updatePreview();
+}
+
+// ─── Drag-and-drop ────────────────────────────────────────────────────────────
+function onDragStart(e) {
+  const row = e.currentTarget;
+  dragState = { id: row.dataset.itemId, parentId: row.dataset.parentId };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragState.id); // required for Firefox
+  setTimeout(() => document.getElementById('tree-item-' + dragState.id)?.classList.add('dragging'), 0);
+}
+
+function onDragEnd() {
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.drop-above').forEach(el => el.classList.remove('drop-above'));
+  document.querySelectorAll('.drag-container-hover').forEach(el => el.classList.remove('drag-container-hover'));
+  dragState = null;
+}
+
+function onDragOver(e) {
+  if (!dragState) return;
+  e.preventDefault(); e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drop-above').forEach(el => el.classList.remove('drop-above'));
+  document.querySelectorAll('.drag-container-hover').forEach(el => el.classList.remove('drag-container-hover'));
+  e.currentTarget.classList.add('drop-above');
+}
+
+function onDragOverContainer(e) {
+  if (!dragState) return;
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.drop-above').forEach(el => el.classList.remove('drop-above'));
+  document.querySelectorAll('.drag-container-hover').forEach(el => el.classList.remove('drag-container-hover'));
+  e.currentTarget.classList.add('drag-container-hover');
+}
+
+function isDescendant(parentItem, childId) {
+  if (!parentItem.children) return false;
+  for (const child of parentItem.children) {
+    if (child.id == childId) return true;
+    if (isDescendant(child, childId)) return true;
+  }
+  return false;
+}
+
+function extractDragged() {
+  const srcParentFound = dragState.parentId && dragState.parentId !== 'null' ? findInTree(items, dragState.parentId) : null;
+  const srcArr = srcParentFound ? srcParentFound.item.children : items;
+  const srcFound = findInTree(srcArr, dragState.id);
+  if (!srcFound) return null;
+  srcArr.splice(srcFound.idx, 1);
+  return srcFound.item;
+}
+
+function onDrop(e) {
+  if (!dragState) return;
+  e.preventDefault(); e.stopPropagation();
+  const targetId = e.currentTarget.dataset.itemId;
+  const targetParentId = e.currentTarget.dataset.parentId;
+  if (dragState.id == targetId) return;
+
+  const srcResult = findInTree(items, dragState.id);
+  if (!srcResult) return;
+  if (srcResult.item.type === 'SubMenuItem' && isDescendant(srcResult.item, targetId)) return;
+
+  const draggedItem = extractDragged();
+  if (!draggedItem) return;
+
+  const tgtParentFound = targetParentId && targetParentId !== 'null' ? findInTree(items, targetParentId) : null;
+  const tgtArr = tgtParentFound ? tgtParentFound.item.children : items;
+  const tgtFound = findInTree(tgtArr, targetId);
+  if (tgtFound) tgtArr.splice(tgtFound.idx, 0, draggedItem);
+  else tgtArr.push(draggedItem);
+
+  dragState = null; renderTree(); updatePreview();
+}
+
+function onDropToContainer(e, subId) {
+  if (!dragState) return;
+  e.preventDefault(); e.stopPropagation();
+
+  if (subId && dragState.id == subId) return;
+
+  const srcResult = findInTree(items, dragState.id);
+  if (!srcResult) return;
+  if (subId && srcResult.item.type === 'SubMenuItem' && isDescendant(srcResult.item, subId)) return;
+
+  const draggedItem = extractDragged();
+  if (!draggedItem) return;
+
+  if (subId) {
+    const tgtFound = findInTree(items, subId);
+    if (tgtFound) { tgtFound.item.children.push(draggedItem); expandedIds.add(String(subId)); }
+  } else {
+    items.push(draggedItem);
+  }
+  dragState = null; renderTree(); updatePreview();
+}
+
+// ─── Move-to modal ────────────────────────────────────────────────────────────
+function openMoveModal(id) {
+  movingItemId = id;
+  const found = findInTree(items, id);
+  if (!found) return;
+  const movingItem = found.item;
+
+  const list = document.getElementById('move-target-list');
+  list.innerHTML = '';
+
+  function addBtn(label, targetParentId) {
+    const btn = document.createElement('button');
+    btn.className = 'move-target-btn';
+    btn.textContent = label;
+    btn.onclick = () => doMoveItemTo(id, targetParentId);
+    list.appendChild(btn);
+  }
+
+  // Root level (only if not already at root)
+  if (found.arr !== items) addBtn('📂 Root level', null);
+
+  // All submenus (excluding the item itself and its descendants)
+  function walkSubs(arr, depth) {
+    arr.forEach(item => {
+      if (item.type === 'SubMenuItem' && item.id != id && !isDescendant(movingItem, item.id)) {
+        addBtn('  '.repeat(depth) + '📁 ' + item.name, item.id);
+        if (item.children) walkSubs(item.children, depth + 1);
+      } else if (item.children) {
+        walkSubs(item.children, depth);
+      }
+    });
+  }
+  walkSubs(items, 0);
+
+  if (list.children.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.86rem;padding:10px 0">No other locations available.</div>';
+  }
+  document.getElementById('move-modal').classList.add('open');
+}
+
+function doMoveItemTo(id, targetParentId) {
+  const srcFound = findInTree(items, id);
+  if (!srcFound) return;
+  const draggedItem = srcFound.item;
+  srcFound.arr.splice(srcFound.idx, 1);
+
+  if (targetParentId !== null) {
+    const tgtFound = findInTree(items, targetParentId);
+    if (tgtFound) { tgtFound.item.children.push(draggedItem); expandedIds.add(String(targetParentId)); }
+  } else {
+    items.push(draggedItem);
+  }
+  closeMoveModal(); renderTree(); updatePreview();
+}
+
+function closeMoveModal() {
+  document.getElementById('move-modal').classList.remove('open');
+  movingItemId = null;
+}
+
+// ─── Card toggle ──────────────────────────────────────────────────────────────
+function toggleCard(header) {
+  header.nextElementSibling.classList.toggle('collapsed');
+  header.querySelector('.chevron').classList.toggle('open');
+}
+
+// ─── Visibility builder ───────────────────────────────────────────────────────
+function updateVisUI() {
+  const mode = document.querySelector('input[name="modal-vis-mode"]:checked')?.value;
+  document.getElementById('vis-fn-group').style.display = (mode === 'fn' || mode === 'not') ? 'flex' : 'none';
+}
+
+function getVisValue() {
+  const mode = document.querySelector('input[name="modal-vis-mode"]:checked')?.value;
+  if (mode === 'always') return undefined;
+  const fn = document.getElementById('modal-visible-fn').value.trim();
+  if (!fn) return undefined;
+  return mode === 'not' ? `!${fn}` : fn; // ! prefix = inverted
+}
+
+function setVisValue(visible) {
+  if (!visible) {
+    document.querySelector('input[name="modal-vis-mode"][value="always"]').checked = true;
+    document.getElementById('modal-visible-fn').value = '';
+  } else if (String(visible).startsWith('!')) {
+    document.querySelector('input[name="modal-vis-mode"][value="not"]').checked = true;
+    document.getElementById('modal-visible-fn').value = String(visible).slice(1);
+  } else {
+    document.querySelector('input[name="modal-vis-mode"][value="fn"]').checked = true;
+    document.getElementById('modal-visible-fn').value = visible;
+  }
+  updateVisUI();
+}
+
+function genVisible(visible) {
+  if (visible === undefined || visible === true) return '';
+  if (visible === false) return ', visible=False';
+  if (String(visible).startsWith('!')) return `, visible=lambda: not ${String(visible).slice(1)}()`;
+  return `, visible=${visible}`;
+}
+
+// ─── Modal open / close ───────────────────────────────────────────────────────
+function openAddModal(parentId) {
+  editingId = null; editingParentId = parentId;
+  document.getElementById('modal-title').textContent = 'Add Item';
+  document.getElementById('modal-type').disabled = false;
+  resetModalForm();
+  document.getElementById('modal-type').value = 'CallbackItem';
+  onTypeChange();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const found = findInTree(items, id);
+  if (!found) return;
+  const { item } = found;
+  editingId = id; editingParentId = null;
+  document.getElementById('modal-title').textContent = 'Edit Item';
+  document.getElementById('modal-type').value = item.type;
+  document.getElementById('modal-type').disabled = true;
+  document.getElementById('modal-name').value = item.name || '';
+  setVisValue(item.visible);
+  onTypeChange();
+
+  switch (item.type) {
+    case 'SubMenuItem':
+      v('sub-decorator', item.decorator || ''); break;
+    case 'CallbackItem':
+      v('cb-callback', item.callback || ''); v('cb-arg', item.callbackArg || '');
+      v('cb-decorator', item.decorator || '');
+      document.getElementById('cb-return-parent').checked = item.returnParent !== false; break;
+    case 'ToggleItem':
+      v('tog-state-cb', item.stateCallback || ''); v('tog-state-arg', item.stateCallbackArg || '');
+      v('tog-change-cb', item.changeCallback || ''); v('tog-change-arg', item.changeCallbackArg || ''); break;
+    case 'EnumItem':
+      v('enum-callback', item.callback || ''); v('enum-selected', item.selected ?? 0);
+      enumOptionsHaveValues = item.options && item.options.some(o => o.value !== undefined && o.value !== '');
+      document.getElementById('enum-has-values').checked = enumOptionsHaveValues;
+      rebuildEnumOptions(item.options || []); break;
+    case 'InfoItem':
+      v('info-decorator', item.decorator || ''); break;
+    case 'ValueItem':
+      v('val-reader', item.valueReader ?? ''); v('val-min', item.minVal ?? 0);
+      v('val-max', item.maxVal ?? 100); v('val-step', item.step ?? 1);
+      v('val-callback', item.callback || ''); break;
+    case 'ConfirmItem':
+      v('conf-callback', item.callback || ''); v('conf-arg', item.callbackArg || '');
+      v('conf-question', item.question || ''); v('conf-yes', item.yesLabel || 'yes');
+      v('conf-no', item.noLabel || 'no'); v('conf-decorator', item.decorator || ''); break;
+    case 'CustomItem':
+      v('cust-classname', item.className || ''); v('cust-draw', item.drawCode || '');
+      v('cust-select', item.selectCode || ''); v('cust-up', item.upCode || '');
+      v('cust-down', item.downCode || ''); break;
+    case 'SeparatorItem':
+      break;
+    case 'SliderItem':
+      v('val-reader', item.valueReader ?? ''); v('val-min', item.minVal ?? 0);
+      v('val-max', item.maxVal ?? 100); v('val-step', item.step ?? 1);
+      v('val-callback', item.callback || ''); break;
+    case 'MultiSelectItem':
+      v('multi-callback', item.callback || '');
+      v('multi-selected', Array.isArray(item.selected) ? item.selected.join(', ') : (item.selected ?? ''));
+      multiOptionsHaveValues = item.options && item.options.some(o => o.value !== undefined && o.value !== '');
+      document.getElementById('multi-has-values').checked = multiOptionsHaveValues;
+      rebuildMultiOptions(item.options || []); break;
+    case 'DynamicSubMenuItem':
+      v('dyn-callback', item.itemsCallback || ''); v('dyn-decorator', item.decorator || ''); break;
+  }
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function v(id, val) { document.getElementById(id).value = val; }
+
+function closeModal() { document.getElementById('edit-modal').classList.remove('open'); }
+
+function resetModalForm() {
+  ['modal-name','sub-decorator','cb-callback','cb-arg','cb-decorator',
+   'tog-state-cb','tog-state-arg','tog-change-cb','tog-change-arg',
+   'enum-callback','info-decorator','val-reader','val-callback',
+   'multi-callback','multi-selected','dyn-callback','dyn-decorator',
+   'conf-callback','conf-arg','conf-question','conf-decorator',
+   'cust-classname','cust-draw','cust-select','cust-up','cust-down'].forEach(id => v(id,''));
+  v('val-min','0'); v('val-max','100'); v('val-step','1');
+  v('conf-yes','yes'); v('conf-no','no'); v('enum-selected','0');
+  document.getElementById('cb-return-parent').checked = true;
+  enumOptionsHaveValues = false;
+  document.getElementById('enum-has-values').checked = false;
+  rebuildEnumOptions([]);
+  multiOptionsHaveValues = false;
+  const mh = document.getElementById('multi-has-values'); if (mh) mh.checked = false;
+  rebuildMultiOptions([]);
+  setVisValue(undefined);
+}
+
+function onTypeChange() {
+  const type = document.getElementById('modal-type').value;
+  document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
+  const fieldEl = type === 'SliderItem' ? document.getElementById('fields-ValueItem') : document.getElementById('fields-' + type);
+  fieldEl?.classList.add('active');
+  document.getElementById('type-desc').textContent = TYPE_DESC[type] || '';
+  if (type === 'EnumItem' && !editingId) {
+    rebuildEnumOptions([{ name: 'Option 1' }, { name: 'Option 2' }]);
+  }
+  if (type === 'MultiSelectItem' && !editingId) {
+    rebuildMultiOptions([{ name: 'Option 1' }, { name: 'Option 2' }]);
+  }
+}
+
+// ─── Save modal ───────────────────────────────────────────────────────────────
+function saveModal() {
+  const type = document.getElementById('modal-type').value;
+  let name = document.getElementById('modal-name').value.trim();
+  if (!name && type !== 'SeparatorItem') { highlight('modal-name'); return; }
+  if (type === 'SeparatorItem') name = name || '';
+
+  const item = { id: editingId || nextId++, type, name, visible: getVisValue() };
+  let valid = true;
+
+  switch (type) {
+    case 'SubMenuItem':
+      item.decorator = document.getElementById('sub-decorator').value.trim() || undefined;
+      if (!editingId) item.children = [];
+      break;
+    case 'SeparatorItem':
+      break;
+    case 'SliderItem':
+      item.valueReader = document.getElementById('val-reader').value.trim();
+      if (!item.valueReader) { highlight('val-reader'); valid = false; break; }
+      item.minVal = document.getElementById('val-min').value;
+      item.maxVal = document.getElementById('val-max').value;
+      item.step   = document.getElementById('val-step').value;
+      item.callback = document.getElementById('val-callback').value.trim();
+      if (!item.callback) { highlight('val-callback'); valid = false; }
+      break;
+    case 'MultiSelectItem':
+      item.callback = document.getElementById('multi-callback').value.trim();
+      if (!item.callback) { highlight('multi-callback'); valid = false; break; }
+      item.options = readMultiOptions();
+      if (!item.options.length) { showToast('Add at least one option', true); valid = false; break; }
+      const selText = document.getElementById('multi-selected').value.trim();
+      item.selected = selText ? selText.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)) : [];
+      break;
+    case 'DynamicSubMenuItem':
+      item.itemsCallback = document.getElementById('dyn-callback').value.trim();
+      if (!item.itemsCallback) { highlight('dyn-callback'); valid = false; break; }
+      item.decorator = document.getElementById('dyn-decorator').value.trim() || undefined;
+      break;
+    case 'CallbackItem':
+      item.callback = document.getElementById('cb-callback').value.trim();
+      if (!item.callback) { highlight('cb-callback'); valid = false; break; }
+      item.callbackArg = document.getElementById('cb-arg').value.trim() || undefined;
+      item.decorator = document.getElementById('cb-decorator').value.trim() || undefined;
+      item.returnParent = document.getElementById('cb-return-parent').checked;
+      break;
+    case 'ToggleItem':
+      item.stateCallback = document.getElementById('tog-state-cb').value.trim();
+      item.stateCallbackArg = document.getElementById('tog-state-arg').value.trim() || undefined;
+      item.changeCallback = document.getElementById('tog-change-cb').value.trim();
+      item.changeCallbackArg = document.getElementById('tog-change-arg').value.trim() || undefined;
+      if (!item.stateCallback || !item.changeCallback) {
+        if (!item.stateCallback) highlight('tog-state-cb');
+        if (!item.changeCallback) highlight('tog-change-cb');
+        valid = false;
+      }
+      break;
+    case 'EnumItem':
+      item.callback = document.getElementById('enum-callback').value.trim();
+      if (!item.callback) { highlight('enum-callback'); valid = false; break; }
+      item.options = readEnumOptions();
+      if (!item.options.length) { showToast('Add at least one option', true); valid = false; break; }
+      item.selected = parseInt(document.getElementById('enum-selected').value) || 0;
+      break;
+    case 'InfoItem':
+      item.decorator = document.getElementById('info-decorator').value.trim() || undefined;
+      break;
+    case 'ValueItem':
+      item.valueReader = document.getElementById('val-reader').value.trim();
+      if (!item.valueReader) { highlight('val-reader'); valid = false; break; }
+      item.minVal = document.getElementById('val-min').value;
+      item.maxVal = document.getElementById('val-max').value;
+      item.step   = document.getElementById('val-step').value;
+      item.callback = document.getElementById('val-callback').value.trim();
+      if (!item.callback) { highlight('val-callback'); valid = false; }
+      break;
+    case 'ConfirmItem':
+      item.callback = document.getElementById('conf-callback').value.trim();
+      if (!item.callback) { highlight('conf-callback'); valid = false; break; }
+      item.callbackArg = document.getElementById('conf-arg').value.trim() || undefined;
+      item.question    = document.getElementById('conf-question').value.trim() || undefined;
+      item.yesLabel    = document.getElementById('conf-yes').value.trim() || 'yes';
+      item.noLabel     = document.getElementById('conf-no').value.trim() || 'no';
+      item.decorator   = document.getElementById('conf-decorator').value.trim() || undefined;
+      break;
+    case 'CustomItem':
+      item.className  = document.getElementById('cust-classname').value.trim();
+      if (!item.className) { highlight('cust-classname'); valid = false; break; }
+      item.drawCode   = document.getElementById('cust-draw').value.trim() || 'pass';
+      item.selectCode = document.getElementById('cust-select').value.trim() || 'return self.parent';
+      item.upCode     = document.getElementById('cust-up').value.trim() || undefined;
+      item.downCode   = document.getElementById('cust-down').value.trim() || undefined;
+      break;
+  }
+
+  if (!valid) return;
+
+  if (editingId) {
+    const { arr, idx } = findInTree(items, editingId);
+    const oldChildren = arr[idx].children;
+    if (item.type === 'SubMenuItem' && oldChildren) item.children = oldChildren;
+    if (item.type === 'DynamicSubMenuItem') delete item.children;
+    arr[idx] = item;
+  } else {
+    if (editingParentId) {
+      const parentFound = findInTree(items, editingParentId);
+      parentFound.item.children.push(item);
+      expandedIds.add(String(editingParentId));
+    } else {
+      items.push(item);
+    }
+  }
+  closeModal(); renderTree(); updatePreview();
+}
+
+function highlight(id) {
+  const el = document.getElementById(id);
+  el.classList.add('field-error'); el.focus();
+  setTimeout(() => el.classList.remove('field-error'), 2000);
+}
+
+// ─── Enum options ─────────────────────────────────────────────────────────────
+function addEnumOption() {
+  const list = document.getElementById('enum-options-list');
+  const valCol = enumOptionsHaveValues ? `<input type="text" class="val-input" placeholder="value">` : '';
+  const row = document.createElement('div');
+  row.className = 'enum-option-row';
+  row.innerHTML = `<input type="text" placeholder="Option name">${valCol}<button class="btn-danger-ghost" onclick="this.parentElement.remove()">✕</button>`;
+  list.appendChild(row);
+}
+
+function rebuildEnumOptions(options) {
+  const list = document.getElementById('enum-options-list');
+  list.innerHTML = '';
+  options.forEach(opt => {
+    const valCol = enumOptionsHaveValues ? `<input type="text" class="val-input" placeholder="value" value="${escHtml(opt.value ?? '')}">` : '';
+    const row = document.createElement('div');
+    row.className = 'enum-option-row';
+    row.innerHTML = `<input type="text" placeholder="Option name" value="${escHtml(opt.name || opt)}">${valCol}<button class="btn-danger-ghost" onclick="this.parentElement.remove()">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function toggleEnumValues() {
+  enumOptionsHaveValues = document.getElementById('enum-has-values').checked;
+  rebuildEnumOptions(readEnumOptions());
+}
+
+function readEnumOptions() {
+  return [...document.querySelectorAll('#enum-options-list .enum-option-row')].map(row => {
+    const inputs = row.querySelectorAll('input[type="text"]');
+    const name = inputs[0].value.trim();
+    if (!name) return null;
+    if (enumOptionsHaveValues && inputs[1]) return { name, value: inputs[1].value.trim() };
+    return { name };
+  }).filter(Boolean);
+}
+
+function addMultiOption() {
+  const list = document.getElementById('multi-options-list');
+  const valCol = multiOptionsHaveValues ? `<input type="text" class="val-input" placeholder="value">` : '';
+  const row = document.createElement('div');
+  row.className = 'enum-option-row';
+  row.innerHTML = `<input type="text" placeholder="Option name">${valCol}<button class="btn-danger-ghost" onclick="this.parentElement.remove()">✕</button>`;
+  list.appendChild(row);
+}
+
+function rebuildMultiOptions(options) {
+  const list = document.getElementById('multi-options-list');
+  if (!list) return;
+  list.innerHTML = '';
+  (options || []).forEach(opt => {
+    const valCol = multiOptionsHaveValues ? `<input type="text" class="val-input" placeholder="value" value="${escHtml(opt.value ?? '')}">` : '';
+    const row = document.createElement('div');
+    row.className = 'enum-option-row';
+    row.innerHTML = `<input type="text" placeholder="Option name" value="${escHtml(opt.name || opt)}">${valCol}<button class="btn-danger-ghost" onclick="this.parentElement.remove()">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function toggleMultiValues() {
+  multiOptionsHaveValues = document.getElementById('multi-has-values').checked;
+  rebuildMultiOptions(readMultiOptions());
+}
+
+function readMultiOptions() {
+  const list = document.getElementById('multi-options-list');
+  if (!list) return [];
+  return [...list.querySelectorAll('.enum-option-row')].map(row => {
+    const inputs = row.querySelectorAll('input[type="text"]');
+    const name = inputs[0].value.trim();
+    if (!name) return null;
+    if (multiOptionsHaveValues && inputs[1]) return { name, value: inputs[1].value.trim() };
+    return { name };
+  }).filter(Boolean);
+}
+
+// ─── Import / Export JSON ─────────────────────────────────────────────────────
+function exportJSON() {
+  const data = {
+    version: 1,
+    config: {
+      screenTitle: document.getElementById('screen_title').value.trim(),
+      menuVar:     document.getElementById('menu_var').value.trim(),
+      displayVar:  document.getElementById('display_var').value.trim(),
+      perPage:     document.getElementById('per_page').value,
+      lineHeight:  document.getElementById('line_height').value,
+      fontWidth:   document.getElementById('font_width').value,
+    },
+    items,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'umenu-config.json' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('💾 Config saved!');
+}
+
+function triggerImport() {
+  document.getElementById('json-import-input').click();
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if (data.config) {
+        const c = data.config;
+        v('screen_title', c.screenTitle || 'Main Menu');
+        v('menu_var',     c.menuVar     || 'menu');
+        v('display_var',  c.displayVar  || 'display');
+        v('per_page',     c.perPage     || '4');
+        v('line_height',  c.lineHeight  || '14');
+        v('font_width',   c.fontWidth   || '8');
+      }
+      items = data.items || [];
+      nextId = 1;
+      (function maxId(arr) {
+        arr.forEach(item => {
+          if (item.id >= nextId) nextId = +item.id + 1;
+          if (item.children) maxId(item.children);
+        });
+      })(items);
+      expandedIds = new Set();
+      renderTree(); updatePreview();
+      showToast('📂 Config loaded!');
+    } catch {
+      showToast('Invalid JSON file', true);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── Code generation ──────────────────────────────────────────────────────────
+function py(s) { s = String(s); return s.includes("'") ? `"${s}"` : `'${s}'`; }
+function pyCallback(cb, arg) { return arg ? `(${cb}, ${arg})` : cb; }
+
+function genItem(item, depth) {
+  const p = '    '.repeat(depth);
+  const vis = genVisible(item.visible);
+  switch (item.type) {
+    case 'SubMenuItem': {
+      let line = `${p}.add(SubMenuItem(${py(item.name)}`;
+      if (item.decorator) line += `, ${py(item.decorator)}`;
+      line += vis + ')';
+      if (item.children?.length) item.children.forEach(c => { line += '\n' + genItem(c, depth + 1); });
+      line += ')';
+      return line;
+    }
+    case 'CallbackItem': {
+      let line = `${p}.add(CallbackItem(${py(item.name)}, ${pyCallback(item.callback, item.callbackArg)}`;
+      if (item.returnParent === false) line += ', return_parent=False';
+      if (item.decorator) line += `, decorator=${py(item.decorator)}`;
+      return line + vis + '))';
+    }
+    case 'ToggleItem': {
+      const state  = pyCallback(item.stateCallback, item.stateCallbackArg);
+      const change = pyCallback(item.changeCallback, item.changeCallbackArg);
+      return `${p}.add(ToggleItem(${py(item.name)}, ${state}, ${change}${vis}))`;
+    }
+    case 'EnumItem': {
+      let opts;
+      if (item.options?.some(o => o.value !== undefined && o.value !== '')) {
+        opts = '[' + item.options.map(o => `{'name': ${py(o.name)}, 'value': ${/^\d/.test(o.value) ? o.value : py(o.value)}}`).join(', ') + ']';
+      } else {
+        opts = '[' + (item.options || []).map(o => py(o.name || o)).join(', ') + ']';
+      }
+      let line = `${p}.add(EnumItem(${py(item.name)}, ${opts}, ${item.callback}`;
+      if (item.selected) line += `, selected=${item.selected}`;
+      return line + vis + '))';
+    }
+    case 'InfoItem': {
+      let line = `${p}.add(InfoItem(${py(item.name)}`;
+      if (item.decorator) line += `, ${py(item.decorator)}`;
+      return line + vis + '))';
+    }
+    case 'ValueItem':
+      return `${p}.add(ValueItem(${py(item.name)}, ${item.valueReader}, ${item.minVal}, ${item.maxVal}, ${item.step}, ${item.callback}${vis}))`;
+    case 'SliderItem':
+      return `${p}.add(SliderItem(${py(item.name)}, ${item.valueReader}, ${item.minVal}, ${item.maxVal}, ${item.step}, ${item.callback}${vis}))`;
+    case 'SeparatorItem':
+      return `${p}.add(SeparatorItem()${genVisible(item.visible)})`;
+    case 'MultiSelectItem': {
+      let mopts;
+      if (item.options?.some(o => o.value !== undefined && o.value !== '')) {
+        mopts = '[' + item.options.map(o => `{'name': ${py(o.name)}, 'value': ${/^\d/.test(o.value) ? o.value : py(o.value)}}`).join(', ') + ']';
+      } else {
+        mopts = '[' + (item.options || []).map(o => py(o.name || o)).join(', ') + ']';
+      }
+      let mline = `${p}.add(MultiSelectItem(${py(item.name)}, ${mopts}, ${item.callback}`;
+      if (item.selected && item.selected.length) mline += `, selected=[${item.selected.join(', ')}]`;
+      return mline + vis + '))';
+    }
+    case 'DynamicSubMenuItem': {
+      let dline = `${p}.add(DynamicSubMenuItem(${py(item.name)}, ${item.itemsCallback}`;
+      if (item.decorator) dline += `, decorator=${py(item.decorator)}`;
+      return dline + vis + '))';
+    }
+    case 'ConfirmItem': {
+      let line = `${p}.add(ConfirmItem(${py(item.name)}, ${pyCallback(item.callback, item.callbackArg)}`;
+      if (item.question) line += `, ${py(item.question)}`;
+      if (item.yesLabel !== 'yes' || item.noLabel !== 'no') line += `, (${py(item.yesLabel || 'yes')}, ${py(item.noLabel || 'no')})`;
+      if (item.decorator) line += `, decorator=${py(item.decorator)}`;
+      return line + vis + '))';
+    }
+    case 'CustomItem':
+      return `${p}.add(${item.className}(${py(item.name)}${vis}))`;
+    default:
+      return `${p}# unknown type: ${item.type}`;
+  }
+}
+
+function genCustomClass(item) {
+  let code = `class ${item.className}(CustomItem):\n    def draw(self):\n`;
+  (item.drawCode || 'pass').split('\n').forEach(l => { code += `        ${l}\n`; });
+  code += `\n    def select(self):\n`;
+  (item.selectCode || 'return self.parent').split('\n').forEach(l => { code += `        ${l}\n`; });
+  if (item.upCode)   { code += `\n    def up(self):\n`;   item.upCode.split('\n').forEach(l => { code += `        ${l}\n`; }); }
+  if (item.downCode) { code += `\n    def down(self):\n`; item.downCode.split('\n').forEach(l => { code += `        ${l}\n`; }); }
+  return code;
+}
+
+function generateCode() {
+  const menuVar    = document.getElementById('menu_var').value.trim()    || 'menu';
+  const displayVar = document.getElementById('display_var').value.trim() || 'display';
+  const perPage    = document.getElementById('per_page').value    || '4';
+  const lineHeight = document.getElementById('line_height').value || '14';
+  const fontWidth  = document.getElementById('font_width').value  || '8';
+  const title      = document.getElementById('screen_title').value.trim() || 'Main Menu';
+
+  const usedTypes = new Set();
+  const customItems = [];
+  (function collect(arr) {
+    arr.forEach(item => {
+      usedTypes.add(item.type);
+      if (item.type === 'CustomItem') customItems.push(item);
+      if (item.children) collect(item.children);
+    });
+  })(items);
+
+  const importTypes = [...usedTypes].filter(t => t !== 'CustomItem');
+  if (usedTypes.has('CustomItem')) importTypes.push('CustomItem');
+
+  let code = `from umenu import Menu, MenuScreen`;
+  if (importTypes.length) code += `, ${importTypes.join(', ')}`;
+  code += '\n\n';
+
+  if (customItems.length) customItems.forEach(ci => { code += genCustomClass(ci) + '\n\n'; });
+
+  code += `# Initialise menu (replace '${displayVar}' with your display driver)\n`;
+  code += `${menuVar} = Menu(${displayVar}, ${perPage}, ${lineHeight}`;
+  if (fontWidth !== '8') code += `, font_width=${fontWidth}`;
+  code += ')\n\n';
+
+  code += `${menuVar}.set_screen(\n    MenuScreen(${py(title)})\n`;
+  items.forEach(item => { code += genItem(item, 1) + '\n'; });
+  code += ')\n\n';
+
+  code += `# Navigation — wire these to your buttons/encoder:\n`;
+  code += `# ${menuVar}.move(-1)  # scroll up\n`;
+  code += `# ${menuVar}.move(1)   # scroll down\n`;
+  code += `# ${menuVar}.click()   # select / confirm\n`;
+  code += `${menuVar}.draw()      # call this in your main loop\n`;
+  return code;
+}
+
+function updatePreview() {
+  document.getElementById('code-preview').innerHTML = highlightPython(generateCode());
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(generateCode()).then(() => showToast('📋 Copied!'));
+}
+
+function downloadCode() {
+  const blob = new Blob([generateCode()], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: 'menu.py' });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ menu.py downloaded!');
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+const TEMPLATES = {
+  device: [
+    { id: nextId++, type: 'ToggleItem', name: 'WiFi', stateCallback: 'wifi_get_status', changeCallback: 'wifi_toggle' },
+    { id: nextId++, type: 'InfoItem', name: 'IP Address', decorator: '192.168.1.1' },
+    { id: nextId++, type: 'SubMenuItem', name: 'Settings', children: [
+      { id: nextId++, type: 'ValueItem', name: 'Brightness', valueReader: '50', minVal: '0', maxVal: '100', step: '5', callback: 'set_brightness' },
+      { id: nextId++, type: 'EnumItem', name: 'Update Interval', options: [{ name: '1 min' }, { name: '5 min' }, { name: '30 min' }], callback: 'set_interval' },
+      { id: nextId++, type: 'ConfirmItem', name: 'Factory Reset', callback: 'factory_reset', question: 'Reset everything?', yesLabel: 'yes', noLabel: 'cancel' },
+    ]},
+    { id: nextId++, type: 'CallbackItem', name: 'Reboot', callback: 'machine.reset' },
+  ],
+  settings: [
+    { id: nextId++, type: 'ValueItem', name: 'Brightness', valueReader: 'get_brightness', minVal: '0', maxVal: '100', step: '5', callback: 'set_brightness' },
+    { id: nextId++, type: 'ValueItem', name: 'Motor Speed', valueReader: '50', minVal: '0', maxVal: '200', step: '10', callback: 'set_speed' },
+    { id: nextId++, type: 'EnumItem', name: 'Theme', options: [{ name: 'Dark' }, { name: 'Light' }, { name: 'Auto' }], callback: 'set_theme' },
+    { id: nextId++, type: 'ToggleItem', name: 'Sound', stateCallback: 'get_sound', changeCallback: 'toggle_sound' },
+    { id: nextId++, type: 'ConfirmItem', name: 'Reset Defaults', callback: 'reset_defaults', question: 'Reset all settings?', yesLabel: 'yes', noLabel: 'no' },
+  ],
+  minimal: [
+    { id: nextId++, type: 'CallbackItem', name: 'Action 1', callback: 'my_action' },
+    { id: nextId++, type: 'SubMenuItem', name: 'More', children: [
+      { id: nextId++, type: 'CallbackItem', name: 'Action 2', callback: 'another_action' },
+    ]},
+  ],
+  monitor: [
+    {
+      id: nextId++, type: 'CustomItem', name: 'Live Sensors', className: 'LiveSensorScreen',
+      drawCode: [
+        'import gc',
+        "self._page = getattr(self, '_page', 0)",
+        '# --- define your real sensor functions above ---',
+        'rows = [',
+        "    ('Temp',     '{:.1f} C'.format(read_temp())),",
+        "    ('Humidity', '{} %'.format(read_humidity())),",
+        "    ('RAM free', '{} KB'.format(gc.mem_free() // 1024)),",
+        ']',
+        'label, val = rows[self._page]',
+        'self.display.fill(0)',
+        "self.display.text('[ Live Monitor ]', 0, 0)",
+        "self.display.text(label + ':', 0, 16)",
+        'self.display.text(val, 0, 28)',
+        "self.display.text(str(self._page + 1) + '/3  ok=exit', 0, 48)",
+        'self.display.show()',
+      ].join('\n'),
+      selectCode: 'return self.parent',
+      upCode:   "self._page = (getattr(self, '_page', 0) - 1) % 3",
+      downCode: "self._page = (getattr(self, '_page', 0) + 1) % 3",
+    },
+    { id: nextId++, type: 'EnumItem', name: 'Poll Rate', options: [{ name: '0.5 s' }, { name: '1 s' }, { name: '2 s' }, { name: '5 s' }], callback: 'set_poll_rate' },
+    { id: nextId++, type: 'SubMenuItem', name: 'Alert Settings', children: [
+      { id: nextId++, type: 'ToggleItem', name: 'Alerts Enabled', stateCallback: 'get_alerts_on', changeCallback: 'toggle_alerts' },
+      { id: nextId++, type: 'ValueItem', name: 'Temp Threshold', valueReader: 'get_temp_thresh', minVal: '20', maxVal: '80', step: '5', callback: 'set_temp_thresh' },
+      { id: nextId++, type: 'EnumItem', name: 'Alert Sound', options: [{ name: 'None' }, { name: 'Beep' }, { name: 'Alarm' }], callback: 'set_alert_sound' },
+    ]},
+    { id: nextId++, type: 'CallbackItem', name: 'Export Log', callback: 'export_sensor_log' },
+  ],
+};
+
+function loadTemplate(name) {
+  if (items.length > 0 && !confirm('This will replace your current menu. Continue?')) return;
+  items = JSON.parse(JSON.stringify(TEMPLATES[name]));
+  expandedIds = new Set();
+  items.forEach(item => { if (item.type === 'SubMenuItem') expandedIds.add(String(item.id)); });
+  renderTree(); updatePreview();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+updateVisUI();
+renderTree();
+updatePreview();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeMoveModal(); }
+});
+</script>
+</body>
+</html>

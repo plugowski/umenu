@@ -1,21 +1,18 @@
 # uMenu
 
-Simple MicroPython library to create nested and multifunctional menu with callbacks and custom menu items. 
+A simple MicroPython library for nested menus with callbacks and custom menu items.
 
 [![uMenu Example on Video](https://img.youtube.com/vi/TZODmWPMVwM/0.jpg)](https://youtu.be/TZODmWPMVwM)
 
 ## Installation
 
-Just copy the `umenu.py` module into your MicroPython board, or just add into root dir, or just in a `/lib` folder. 
-It's strongly reccomended to froze it into a MicroPython binary image - just place the file inside the `ports/<board>/modules` folder when building MicroPython from source, then flash to the board as usual. 
+Copy `umenu.py` to your board (project root or `/lib`). For best performance, freeze it into the firmware: place the file in `ports/<board>/modules` when building MicroPython, then flash as usual.
 
+**Online config generator:** [https://plugowski.github.io/umenu/](https://plugowski.github.io/umenu/)
 
 ## Usage
 
-To build simple menu, you should initialize display first (can be any driver which supports `framebuf`, I use ssd1306).
-Then create menu object, specify how many items you want to display on one screen and size of one element.
-
-In my example I knnow that menu looks nice when you use 5 lines and 10px height each or 4 lines and 12px height.
+Initialize a display (any driver with `framebuf`; e.g. ssd1306), then create a `Menu` with the number of visible lines and line height. Typical values: 5 lines × 10px or 4 lines × 12px.
 
 ```python
 import ssd1306
@@ -26,89 +23,91 @@ i2c = I2C(1, scl=Pin(4), sda=Pin(5))
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
 menu = Menu(display, 5, 10)
-menu.add_screen(MenuScreen('Main Menu'))
+menu.set_screen(MenuScreen('Main Menu'))
 menu.draw()
 ```
 
-Example above will draw empty menu with title `Main Menu` on top.
-
-Library allows you to add nested screens, as also implement your own screens with logic.
+This draws an empty menu titled "Main Menu". You can add nested screens and custom items with your own logic.
 
 ## Menu Navigation
-To walk through menu items you have to trigger methods from `Menu` class.
 
-- `Menu.move(direction: -1|1)` with go to next or previous item. 
-- `Menu.click()` select current item and execute callable, or go into SubMenu.
-- `Menu.reset()` reset current menu state and go to very beginning.
-- `Menu.draw()` redraw menu with current state.
+Use these `Menu` methods to navigate:
+
+- **`move(direction)`** — `-1` = previous, `1` = next item
+- **`click()`** — select current item (run callback or enter submenu)
+- **`reset()`** — go back to the main screen and clear selection
+- **`draw()`** — redraw the menu
 
 ## Menu Items
-This package already contains some basic Menu Items objects which can be used to build your menu
+
+All items support optional **`name`**, **`decorator`** (right-aligned text or callable; default `'>'` for submenus), and **`visible`** (see [Visibility](#visibility)).
+
+| Item | Description |
+|------|-------------|
+| **SubMenuItem** | Nested submenu |
+| **DynamicSubMenuItem** | Submenu built by a callback |
+| **CallbackItem** | Run a callback on click |
+| **ToggleItem** | On/off with `[x]` / `[ ]` |
+| **EnumItem** | Pick one from a list |
+| **ValueItem** | Numeric value, adjust with up/down |
+| **SliderItem** | Like ValueItem with a bar |
+| **MultiSelectItem** | Pick multiple options |
+| **ConfirmItem** | Yes/no before running callback |
+| **InfoItem** | Read-only label |
+| **SeparatorItem** | Horizontal line (no action) |
+| **CustomItem** | Your own draw/select logic |
 
 ### `SubMenuItem`
-Creates new sub-menu with list of items
+Creates a submenu. Common args: `name`, `decorator` (default `'>'`), `visible`.
 
-**Arguments (common for all MenuItems):**
-- `name` - to define name visible on screen
-- `decorator` - decorator is a text or symbol aligned to right side of screen, can be also callable which return proper 
-string. Default: `>`
-- `visible` - determine if current section should be visible (read more in Visibility section)
 ### `InfoItem`
-Dummy Item, shows only specified text, with no action.
-
-**Arguments:**
-
-See SubMenuItem, default decorator here is empty.
+Read-only label. Common args; decorator default is empty.
 
 ### `CallbackItem`
-Item on menu which is able to trigger any callback specified in argument. After callback, parent screen is returned,
-but can be disabled by setting return_parent to False.
-
-**Specific Arguments:**
-
-- `callback` - callable to trigger on click on item (more in section Callback)
-- `return_parent` - to determine if parent should be returned or not
-
-### `EnumItem`
-Selected List, here you can define list which will be displayed after click, and on select that element will be 
-passed to callback
-
-**Specific Arguments:**
-- `items` - list of items, can be also list of dicts {'value': 'xxx', 'name': 'Fance name'}, where `name` will be 
-  displayed on screen and `value` passed to callback
-- `callback` - callable called after selecting specific position
-- `selected` - define which element should be selected (index or dict key)
-
-### `ValueItem`
-Widget to adjust values, by incrementing or decrementing by specified amount.
-
-**Specific Arguments:**
-- `value_reader` - callable to read current value as start to adjust
-- `min_v` - minimum value for range
-- `max_v` - maximum value for range
-- `step` - step to  increment / decrement
-- `callback` - callback called on every change of value, value will be passed as last argument
-
-### `CustomItem`
-Abstract class to override by custom logic, see example below. Also you can check `ValueItem` implementation
-which extends CustomItem.
+Runs a callback on click, then returns to parent (unless `return_parent=False`).
+- **`callback`** — callable (see [Callbacks](#callbacks))
+- **`return_parent`** — whether to go back after (default `True`)
 
 ### `ToggleItem`
-Item to handle toggles, like on/off actions. You can specify state, and callback which will be called to change state.
-`ToggleItem` is an extension for `CallbackItem`
+On/off item showing `[x]` or `[ ]`. Extends CallbackItem.
+- **`state_callback`** — returns current state (True/False)
+- **`change_callback`** — called to toggle state
 
-**Specific Arguments:**
+### `EnumItem`
+Pick one option from a list; callback receives the chosen value.
+- **`items`** — list of strings or dicts `{'name': 'Label', 'value': x}`; `name` is shown, `value` passed to callback
+- **`callback`** — callable(selected_value)
+- **`selected`** — initial index or key
 
-- `state_callback` - callback to check current state
-- `change_callback` - callback to toggle current state (True/False)
+### `ValueItem`
+Adjust a numeric value with up/down. Opens a custom screen.
+- **`value_reader`** — callable that returns current value
+- **`min_v`**, **`max_v`**, **`step`** — range and step
+- **`callback`** — callable(new_value) on each change
+
+### `SliderItem`
+Same as `ValueItem` but draws a horizontal bar (e.g. volume, brightness). Same arguments.
+
+### `MultiSelectItem`
+Multiple selection; opens submenu of toggles. Callback gets list of selected values.
+- **`items`** — list of options (strings or dicts with `name` / `value`)
+- **`callback`** — callable(list_of_selected_values)
+- **`selected`** — initial indices (iterable or single index)
 
 ### `ConfirmItem`
-Implementation of `CallbackItem` with prompt screen before calling custom function. Can be used when we need confirmation for specific action.
-If user select "no" option, callback won't be triggered.
+Shows a yes/no prompt before running the callback; "no" skips the callback.
+- **`question`** — prompt text (default `"Are you sure?"`)
+- **`answers`** — `(yes_label, no_label)` (default `('yes', 'no')`)
 
-**Specific Arguments:**
-- `question` - can be None, then question "Are you sure?" will be visible
-- `answers` - tuple for `yes` and `no`, it'll simply override default tuple ('yes', 'no')
+### `DynamicSubMenuItem`
+Submenu filled by a callback each time it is opened (e.g. WiFi scan results).
+- **`items_callback`** — callable() returning a list of `MenuItem` instances
+
+### `SeparatorItem`
+Horizontal line; takes one slot, no action on click. Optional **`visible`**.
+
+### `CustomItem`
+Override for custom screens. Implement `draw()` and `select()`; see [CustomItem](#customitem) and `ValueItem` in the source.
 
 ## Example menu
 ```python
@@ -129,8 +128,7 @@ menu.draw()
 
 ## Callbacks
 
-In all MenuItems callbacks can be single callable if no parameters should be passed, or tuple where wirst element is 
-callable, and second is a single arg or tuple with `*args`. For example:
+Callbacks can be a plain callable (no args) or a tuple `(callable, arg)` where `arg` is one value or a tuple of `*args`. Examples:
 
 ```python
 CallbackItem('Print it!', (print, 'hello there'))
@@ -144,16 +142,11 @@ CallbackItem('Print it!', (print, (1, 2, 3)))
 
 ## Visibility
 
-Every item can be hidden separately by setting named argument `visible` to False or
-by passing callable to check conditions if element should be vissible. Callable should return True or False.
+Hide items with **`visible=False`** or pass a **callable** that returns `True`/`False` (e.g. for conditional entries).
 
 ## CustomItem
 
-To create your own menu logic, you can extend abstract class CustomItem class and implement at least `draw()` and 
-`select()` function.
-
-`draw()` is called once you click on specifiv CustomItem position, so basically it can do anything you want, what more
-that object has included display, so you can simply draw anything on OLED using driver's methods.
+Subclass `CustomItem` and implement **`draw()`** and **`select()`**. When the user clicks the item, `draw()` runs—you have access to `self.display`, so you can use the driver’s methods to draw on the OLED. `select()` should return `self.parent` to go back or `self` to stay.
 
 Example usage of CustomItem, to draw some status page:
 
@@ -161,8 +154,8 @@ Example usage of CustomItem, to draw some status page:
 class DrawCustomScreen(CustomItem):
 
     def __init__(self, name):
-      super().__init__(name)
-  
+        super().__init__(name)
+
     def select(self):
         return self.parent  # this is needed to go back to previous view when SET button is pushed
 
@@ -173,12 +166,12 @@ class DrawCustomScreen(CustomItem):
         self.display.hline(0, 32, self.display.width, 1)
         self.display.show()
 
-menu.add_screen(MenuScreen('Main Menu')
+menu.set_screen(MenuScreen('Main Menu')
     .add(DrawCustomScreen('Text in frame'))
 )
 ```
 
-See [`examples/rotary_encoder_menu.py`](./examples/rotary_encoder_menu.py). 
+See [`examples/rotary_encoder_menu.py`](examples/rotary_encoder_menu.py) for a full example. 
 
 
 ## License
